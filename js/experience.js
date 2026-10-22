@@ -48,8 +48,8 @@ function connectAnalyser() {
   try {
     audioContext = new AudioContextClass();
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 128;
-    analyser.smoothingTimeConstant = 0.82;
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.84;
     frequencyData = new Uint8Array(analyser.frequencyBinCount);
     audioSource = audioContext.createMediaElementSource(audio);
     audioSource.connect(analyser);
@@ -93,8 +93,14 @@ stopButton?.addEventListener("click", () => {
 });
 audio?.addEventListener("timeupdate", syncAudioControls);
 audio?.addEventListener("durationchange", syncAudioControls);
-audio?.addEventListener("play", syncAudioControls);
-audio?.addEventListener("pause", syncAudioControls);
+audio?.addEventListener("play", () => {
+  syncAudioControls();
+  renderWorld?.refreshWave();
+});
+audio?.addEventListener("pause", () => {
+  syncAudioControls();
+  renderWorld?.refreshWave();
+});
 audio?.addEventListener("ended", () => {
   audioStatus.textContent = "Der 30-Sekunden-Ausschnitt ist zu Ende.";
   syncAudioControls();
@@ -132,13 +138,18 @@ function createWorld(THREE) {
   const canvas = document.querySelector("#world-canvas");
   const renderer = new THREE.WebGLRenderer({
     canvas,
-    antialias: window.innerWidth > 700,
+    antialias: true,
     alpha: false,
     powerPreference: "high-performance"
   });
   const mobile = window.matchMedia("(max-width: 720px)");
-  const quality = () => mobile.matches ? 1.2 : 1.65;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality()));
+  const requestedPixelRatio = () => Math.min(window.devicePixelRatio || 1, mobile.matches ? 2 : 1.8);
+  const lowPowerHint = mobile.matches && ((navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4);
+  const minimumQualityTier = lowPowerHint ? 1 : 0;
+  let qualityTier = minimumQualityTier;
+  const pixelRatioForTier = () => Math.max(1, requestedPixelRatio() * [1, 0.88, 0.72][qualityTier]);
+  renderer.setPixelRatio(pixelRatioForTier());
+  renderer.shadowMap.enabled = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.16;
@@ -161,6 +172,9 @@ function createWorld(THREE) {
     gold: 0xf0c37b,
     pale: 0xffe6ca
   };
+  const nightColor = new THREE.Color(0x0a0d12);
+  const redColor = new THREE.Color(0x10090e);
+  const goldColor = new THREE.Color(0x100e0d);
   const mat = (color, roughness = 0.55, metalness = 0.08, extra = {}) =>
     new THREE.MeshStandardMaterial({ color, roughness, metalness, ...extra });
   const addMesh = (geometry, material, parent, position, rotation) => {
@@ -171,10 +185,13 @@ function createWorld(THREE) {
     return item;
   };
 
-  scene.add(new THREE.HemisphereLight(0x6d7683, 0x111014, 1.05));
-  const cabinFill = new THREE.PointLight(0xd47b42, 4.0, 15, 2);
+  scene.add(new THREE.HemisphereLight(0x8995a4, 0x171317, 1.28));
+  const cabinFill = new THREE.PointLight(0xe0a775, 6.2, 17, 2);
   cabinFill.position.set(0, 2.6, 0.5);
   scene.add(cabinFill);
+  const consoleFill = new THREE.PointLight(0x94775b, 0.85, 5.5, 2);
+  consoleFill.position.set(0.25, 0.9, 0.15);
+  scene.add(consoleFill);
   const dashGlow = new THREE.PointLight(0xa63a37, 1.1, 6, 2);
   dashGlow.position.set(-0.72, 1.08, -2.48);
   world.add(dashGlow);
@@ -221,9 +238,8 @@ function createWorld(THREE) {
   // Distant blocks and lit windows create a city silhouette rather than a flat backdrop.
   const cityMats = [mat(0x181a22, 0.92), mat(0x201d20, 0.9), mat(0x18202a, 0.86)];
   const windowMats = [
-    new THREE.MeshBasicMaterial({ color: 0xffc98c, toneMapped: false }),
-    new THREE.MeshBasicMaterial({ color: 0xf3584d, toneMapped: false }),
-    new THREE.MeshBasicMaterial({ color: 0xb6c7d5, toneMapped: false })
+    new THREE.MeshBasicMaterial({ color: 0xe0a76c, transparent: true, opacity: 0.78, toneMapped: false }),
+    new THREE.MeshBasicMaterial({ color: 0xb5a38b, transparent: true, opacity: 0.54, toneMapped: false })
   ];
   let seed = 383;
   const random = () => {
@@ -232,17 +248,17 @@ function createWorld(THREE) {
   };
   for (let side of [-1, 1]) {
     for (let i = 0; i < 12; i += 1) {
-      const width = 2.4 + random() * 4.4;
-      const height = 3.8 + random() * 15;
-      const depth = 3 + random() * 6;
-      const x = side * (3.6 + random() * 5.8);
-      const z = -12 - i * 5.8 - random() * 3;
+      const width = 2.5 + random() * 3.6;
+      const height = 4.2 + random() * 11;
+      const depth = 3 + random() * 4;
+      const x = side * (5.1 + random() * 4.4);
+      const z = -28 - i * 7.3 - random() * 3;
       addMesh(new THREE.BoxGeometry(width, height, depth), cityMats[i % cityMats.length], world, [x, height / 2 - 0.7, z]);
-      const count = 5 + Math.floor(random() * 5);
+      const count = 4 + Math.floor(random() * 4);
       for (let w = 0; w < count; w += 1) {
         const wx = x + (random() - 0.5) * width * 0.72;
         const wy = 0.15 + random() * (height * 0.78);
-        const glow = addMesh(new THREE.PlaneGeometry(0.12 + random() * 0.16, 0.08 + random() * 0.18), windowMats[Math.floor(random() * windowMats.length)], world, [wx, wy, z + depth / 2 + 0.012]);
+        const glow = addMesh(new THREE.PlaneGeometry(0.075 + random() * 0.055, 0.16 + random() * 0.17), windowMats[Math.floor(random() * windowMats.length)], world, [wx, wy, z + depth / 2 + 0.012]);
         glow.material.side = THREE.DoubleSide;
       }
     }
@@ -266,7 +282,7 @@ function createWorld(THREE) {
   for (const side of [-1, 1]) {
     for (let i = 0; i < 6; i += 1) {
       const z = -12 - i * 15;
-      const x = side * 4.4;
+      const x = side * 3.25;
       addMesh(new THREE.CylinderGeometry(0.055, 0.09, 5.7, 8), mat(0x24252a, 0.48, 0.62), world, [x, 2.0, z]);
       addMesh(new THREE.BoxGeometry(0.68, 0.12, 0.22), mat(0x343034, 0.35, 0.5), world, [x - side * 0.2, 4.82, z]);
       const bulb = addMesh(new THREE.SphereGeometry(0.14, 10, 8), new THREE.MeshBasicMaterial({ color: palette.warm, toneMapped: false }), world, [x - side * 0.23, 4.73, z]);
@@ -287,6 +303,25 @@ function createWorld(THREE) {
   const soft = mat(0x090a0d, 0.86, 0.02);
   const brushed = mat(0x59534b, 0.34, 0.48);
   const seam = mat(0x454044, 0.48, 0.08);
+  const grainCanvas = document.createElement("canvas");
+  grainCanvas.width = grainCanvas.height = 512;
+  const grainContext = grainCanvas.getContext("2d");
+  const grainPixels = grainContext.createImageData(grainCanvas.width, grainCanvas.height);
+  for (let i = 0; i < grainPixels.data.length; i += 4) {
+    const value = 112 + Math.floor(random() * 32);
+    grainPixels.data[i] = value;
+    grainPixels.data[i + 1] = value;
+    grainPixels.data[i + 2] = value;
+    grainPixels.data[i + 3] = 255;
+  }
+  grainContext.putImageData(grainPixels, 0, 0);
+  const grainTexture = new THREE.CanvasTexture(grainCanvas);
+  grainTexture.wrapS = grainTexture.wrapT = THREE.RepeatWrapping;
+  grainTexture.repeat.set(4, 2);
+  leather.bumpMap = grainTexture;
+  leather.bumpScale = 0.018;
+  dashLeather.bumpMap = grainTexture;
+  dashLeather.bumpScale = 0.026;
 
   // Windscreen glass, gasket, roof header, and pillars frame the road beyond the dash.
   const windscreen = new THREE.Mesh(
@@ -307,9 +342,67 @@ function createWorld(THREE) {
   }
 
   // Broad sculpted dashboard, instrument binnacle, glove box, and center-stack surround.
-  addMesh(new THREE.BoxGeometry(9.0, 0.72, 1.55), leather, cabin, [0, 1.0, -3.16]);
+  const dashboardShape = new THREE.Shape();
+  dashboardShape.moveTo(-4.45, 0.08);
+  dashboardShape.lineTo(4.45, 0.08);
+  dashboardShape.lineTo(4.35, 1.1);
+  dashboardShape.quadraticCurveTo(3.95, 1.32, 3.35, 1.28);
+  dashboardShape.lineTo(1.32, 1.16);
+  dashboardShape.quadraticCurveTo(0, 1.04, -1.32, 1.16);
+  dashboardShape.lineTo(-3.35, 1.28);
+  dashboardShape.quadraticCurveTo(-3.95, 1.32, -4.35, 1.1);
+  dashboardShape.closePath();
+  const dashboardGeometry = new THREE.ExtrudeGeometry(dashboardShape, {
+    depth: 1.55,
+    bevelEnabled: true,
+    bevelThickness: 0.075,
+    bevelSize: 0.075,
+    bevelSegments: 4,
+    curveSegments: 12
+  });
+  dashboardGeometry.translate(0, 0, -0.775);
+  addMesh(dashboardGeometry, leather, cabin, [0, 0, -3.16]);
   addMesh(new THREE.BoxGeometry(8.8, 0.28, 1.42), dashLeather, cabin, [0, 1.42, -3.2]);
   addMesh(new THREE.BoxGeometry(8.9, 0.035, 1.3), mat(0x303036, 0.72, 0.025), cabin, [0, 1.574, -3.22]);
+  addMesh(new THREE.BoxGeometry(8.72, 1.35, 0.36), leather, cabin, [0, -0.18, -2.58]);
+  addMesh(new THREE.BoxGeometry(8.5, 0.045, 0.26), brushed, cabin, [0, 0.16, -2.405]);
+  addMesh(new THREE.BoxGeometry(4.7, 0.016, 0.016), mat(0xb87346, 0.34, 0.25, { emissive: 0x7c3d1c, emissiveIntensity: 0.24 }), cabin, [0.35, 0.08, -2.38]);
+  addMesh(new THREE.BoxGeometry(2.2, 0.3, 0.26), dashLeather, cabin, [2.62, 0.66, -2.39]);
+  addMesh(new THREE.BoxGeometry(1.8, 0.012, 0.012), seam, cabin, [2.62, 0.5, -2.245]);
+  const cabinFloor = addMesh(new THREE.PlaneGeometry(8.2, 7.0), mat(0x151619, 0.9, 0.02), cabin, [0, -0.55, -1.0], [-Math.PI / 2, 0, 0]);
+  cabinFloor.material.side = THREE.DoubleSide;
+  addMesh(new THREE.BoxGeometry(1.9, 0.62, 3.8), mat(0x28272b, 0.58, 0.045), cabin, [0, 0.05, -0.5]);
+  addMesh(new THREE.BoxGeometry(1.62, 0.045, 3.52), mat(0x353237, 0.52, 0.055), cabin, [0, 0.385, -0.5]);
+  const tunnelTrim = mat(0x756b5b, 0.32, 0.64);
+  for (const side of [-1, 1]) {
+    addMesh(new THREE.BoxGeometry(0.035, 0.018, 3.12), tunnelTrim, cabin, [side * 0.79, 0.418, -0.48]);
+  }
+  addMesh(new THREE.BoxGeometry(1.36, 0.16, 0.88), leather, cabin, [0, 0.49, 1.12]);
+  addMesh(new THREE.BoxGeometry(1.14, 0.025, 0.7), dashLeather, cabin, [0, 0.582, 1.1]);
+  // Brushed pedals and a ribbed footwell mat finish the lower cabin foreground.
+  const footwellMat = addMesh(new THREE.PlaneGeometry(1.55, 1.95), mat(0x1b1a1d, 0.86, 0.05), cabin, [-1.12, -0.51, 0.85], [-Math.PI / 2, 0, 0]);
+  footwellMat.material.side = THREE.DoubleSide;
+  const pedalMaterial = mat(0x59534a, 0.34, 0.62);
+  for (let i = 0; i < 3; i += 1) {
+    const pedal = addMesh(new THREE.BoxGeometry(0.2, 0.34, 0.075), pedalMaterial, cabin, [-1.58 + i * 0.31, -0.22, 0.3]);
+    pedal.rotation.x = -0.12;
+    for (let rib = 0; rib < 4; rib += 1) {
+      addMesh(new THREE.BoxGeometry(0.14, 0.012, 0.008), mat(0xaaa093, 0.3, 0.58), cabin, [-1.58 + i * 0.31, -0.34 + rib * 0.075, 0.342]);
+    }
+  }
+  addMesh(new THREE.BoxGeometry(8.75, 0.035, 0.11), brushed, cabin, [0, 1.34, -2.36]);
+  const stitchMaterial = new THREE.MeshBasicMaterial({ color: 0x77706b, transparent: true, opacity: 0.52 });
+  for (let i = 0; i < 39; i += 1) {
+    addMesh(new THREE.BoxGeometry(0.055, 0.009, 0.008), stitchMaterial, cabin, [-4.15 + i * 0.218, 1.365, -2.34]);
+  }
+  // Side door caps and armrests give the dashboard a clear cabin silhouette in portrait view.
+  for (const side of [-1, 1]) {
+    const door = addMesh(new THREE.BoxGeometry(0.2, 1.04, 2.7), leather, cabin, [side * 4.28, 0.74, -2.28]);
+    door.rotation.y = side * -0.08;
+    addMesh(new THREE.BoxGeometry(0.36, 0.2, 1.2), dashLeather, cabin, [side * 4.06, 0.96, -1.94], [0, side * -0.08, 0]);
+    addMesh(new THREE.BoxGeometry(0.34, 0.035, 0.28), brushed, cabin, [side * 4.01, 1.04, -2.04], [0, side * -0.08, 0]);
+    addMesh(new THREE.BoxGeometry(0.045, 0.035, 0.12), mat(0xd4c7b2, 0.23, 0.72), cabin, [side * 3.96, 1.03, -2.02]);
+  }
   const stack = addMesh(new THREE.BoxGeometry(3.24, 2.7, 0.58), dashLeather, cabin, [0, 1.43, -3.04]);
   stack.rotation.x = -0.055;
   addMesh(new THREE.BoxGeometry(2.7, 0.7, 0.72), leather, cabin, [2.75, 0.96, -3.18]);
@@ -317,7 +410,7 @@ function createWorld(THREE) {
   addMesh(new THREE.BoxGeometry(2.6, 0.18, 0.38), soft, cabin, [-3.08, 1.79, -2.72]);
 
   // Twin instrument dials stay visible above the steering wheel.
-  const dialCenters = [-3.53, -2.63];
+  const dialCenters = [-1.78, -0.98];
   const dialFace = new THREE.MeshBasicMaterial({ color: 0x0c0e12, toneMapped: false });
   const dialMark = new THREE.MeshBasicMaterial({ color: 0xd99d62, toneMapped: false });
   for (const x of dialCenters) {
@@ -331,18 +424,56 @@ function createWorld(THREE) {
     const needle = addMesh(new THREE.BoxGeometry(0.014, 0.21, 0.012), new THREE.MeshBasicMaterial({ color: 0xf1dfc0, toneMapped: false }), cabin, [x, 1.73, -2.432]);
     needle.rotation.z = 0.24;
   }
-  const wheel = addMesh(new THREE.TorusGeometry(0.62, 0.082, 12, 56), mat(0x363236, 0.53, 0.035), cabin, [-3.1, 1.25, -1.78]);
+  const wheelPosition = [-1.38, 1.25, -1.78];
+  const wheel = addMesh(new THREE.TorusGeometry(0.62, 0.066, 16, 72), mat(0x363236, 0.48, 0.045), cabin, wheelPosition);
   wheel.rotation.y = 0.04;
-  addMesh(new THREE.CylinderGeometry(0.16, 0.16, 0.28, 24), brushed, cabin, [-3.1, 1.25, -1.78], [Math.PI / 2, 0, 0]);
+  addMesh(new THREE.TorusGeometry(0.62, 0.014, 8, 72), mat(0x766b5c, 0.38, 0.2), cabin, [-1.38, 1.25, -1.79]);
+  addMesh(new THREE.CylinderGeometry(0.17, 0.17, 0.22, 32), mat(0x27272b, 0.52, 0.08), cabin, wheelPosition, [Math.PI / 2, 0, 0]);
+  addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.235, 32), brushed, cabin, [-1.38, 1.25, -1.8], [Math.PI / 2, 0, 0]);
+  addMesh(new THREE.BoxGeometry(0.16, 0.1, 0.045), mat(0x18191d, 0.4, 0.16), cabin, [-1.38, 1.25, -1.935]);
   for (const angle of [0.5, 2.6, 4.7]) {
-    const spoke = addMesh(new THREE.BoxGeometry(0.055, 0.5, 0.055), brushed, cabin, [-3.1, 1.25, -1.82]);
+    const spoke = addMesh(new THREE.BoxGeometry(0.075, 0.49, 0.06), brushed, cabin, [-1.38, 1.25, -1.82]);
     spoke.rotation.z = angle;
   }
-  addMesh(new THREE.BoxGeometry(2.1, 0.05, 0.06), brushed, cabin, [-3.1, 1.25, -1.96]);
-  addMesh(new THREE.BoxGeometry(1.9, 0.22, 2.0), leather, cabin, [0, 0.34, -1.62]);
-  addMesh(new THREE.BoxGeometry(0.84, 0.12, 0.6), brushed, cabin, [0, 0.49, -1.32]);
-  addMesh(new THREE.CylinderGeometry(0.075, 0.1, 0.48, 16), soft, cabin, [0, 0.72, -1.28], [0.12, 0, 0]);
-  addMesh(new THREE.SphereGeometry(0.105, 16, 12), mat(0x4a4641, 0.42, 0.08), cabin, [0, 0.99, -1.25]);
+  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [-1.38, 1.04, -1.9]);
+  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [-1.38, 1.46, -1.9]);
+  for (const side of [-1, 1]) {
+    addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.035), mat(0x222328, 0.55, 0.18), cabin, [-1.38 + side * 0.39, 1.25, -1.89]);
+    addMesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mat(0xc49a6a, 0.32, 0.4, { emissive: 0x3c2110, emissiveIntensity: 0.24 }), cabin, [-1.38 + side * 0.39, 1.25, -1.867]);
+  }
+  // Compact electronic selector: leather grip, satin-metal spine, and illuminated gear key.
+  addMesh(new THREE.BoxGeometry(1.08, 0.1, 0.74), mat(0x17181c, 0.46, 0.18), cabin, [0.68, 0.45, 0.18]);
+  addMesh(new THREE.BoxGeometry(0.94, 0.035, 0.61), brushed, cabin, [0.68, 0.514, 0.18]);
+  const cupholderMetal = mat(0xa2937d, 0.26, 0.68);
+  for (const x of [-0.38, 0.38]) {
+    addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.026, 32), mat(0x0d0e11, 0.68, 0.2), cabin, [0.68 + x, 0.423, 0.92]);
+    addMesh(new THREE.TorusGeometry(0.13, 0.012, 8, 32), cupholderMetal, cabin, [0.68 + x, 0.44, 0.92], [Math.PI / 2, 0, 0]);
+  }
+  const selector = new THREE.Group();
+  selector.position.set(0.7, 0.52, 0.2);
+  selector.rotation.z = -0.06;
+  cabin.add(selector);
+  const selectorShape = new THREE.Shape();
+  selectorShape.moveTo(-0.27, 0.03);
+  selectorShape.lineTo(0.27, 0.03);
+  selectorShape.lineTo(0.22, 0.33);
+  selectorShape.quadraticCurveTo(0.2, 0.4, 0.16, 0.48);
+  selectorShape.lineTo(-0.16, 0.48);
+  selectorShape.quadraticCurveTo(-0.2, 0.4, -0.22, 0.33);
+  selectorShape.closePath();
+  const selectorGeometry = new THREE.ExtrudeGeometry(selectorShape, { depth: 0.36, bevelEnabled: true, bevelThickness: 0.045, bevelSize: 0.035, bevelSegments: 4, curveSegments: 12 });
+  selectorGeometry.translate(0, 0, -0.18);
+  addMesh(selectorGeometry, mat(0x29282a, 0.38, 0.3), selector, [0, 0, 0]);
+  addMesh(new THREE.BoxGeometry(0.28, 0.028, 0.27), mat(0x1a1b1f, 0.26, 0.42), selector, [0, 0.47, 0]);
+  addMesh(new THREE.BoxGeometry(0.23, 0.014, 0.018), mat(0xd4c6ac, 0.22, 0.72), selector, [0, 0.47, 0.145]);
+  addMesh(new THREE.BoxGeometry(0.11, 0.012, 0.014), mat(0xe8b878, 0.28, 0.48, { emissive: 0x593416, emissiveIntensity: 0.35 }), selector, [0, 0.47, 0.158]);
+  addMesh(new THREE.BoxGeometry(0.018, 0.26, 0.02), mat(0xaaa093, 0.29, 0.72), selector, [-0.215, 0.25, 0.17]);
+  addMesh(new THREE.BoxGeometry(0.015, 0.24, 0.016), mat(0x8b8175, 0.34, 0.64), selector, [0.215, 0.25, 0.17]);
+  for (let rib = 0; rib < 3; rib += 1) {
+    addMesh(new THREE.BoxGeometry(0.09, 0.012, 0.012), mat(0x8d8172, 0.34, 0.55), selector, [0.1, 0.16 + rib * 0.055, 0.185]);
+  }
+  addMesh(new THREE.BoxGeometry(0.37, 0.026, 0.035), mat(0x7b7265, 0.32, 0.62), selector, [0, 0.02, 0.19]);
+  selector.scale.set(0.84, 0.9, 0.88);
 
   // Small mirror and wipers make the windshield read as glass from the driver's seat.
   addMesh(new THREE.BoxGeometry(0.78, 0.11, 0.18), brushed, cabin, [0, 4.03, -3.94]);
@@ -388,50 +519,62 @@ function createWorld(THREE) {
     geometry.translate(0, 0, -depth / 2);
     return addMesh(geometry, material, radio, position);
   }
-  addRoundedPanel(2.48, 2.40, 0.19, 0.42, 0.055, mat(0x494640, 0.32, 0.48), [0, 0, 0]);
-  addRoundedPanel(2.34, 2.26, 0.16, 0.075, 0.018, mat(0x15161a, 0.5, 0.2), [0, 0, 0.215]);
-  addRoundedPanel(2.22, 2.14, 0.13, 0.035, 0.008, mat(0x292a2e, 0.56, 0.16), [0, 0, 0.268]);
+  addRoundedPanel(3.06, 2.62, 0.27, 0.42, 0.07, mat(0x494640, 0.3, 0.52), [0, 0, 0]);
+  addRoundedPanel(2.94, 2.50, 0.24, 0.075, 0.022, mat(0x15161a, 0.48, 0.24), [0, 0, 0.215]);
+  addRoundedPanel(2.84, 2.40, 0.22, 0.035, 0.01, mat(0x242529, 0.54, 0.2), [0, 0, 0.268]);
 
-  // A backlit, glass-fronted display sits in a rounded metal bezel.
-  addRoundedPanel(1.79, 1.10, 0.085, 0.105, 0.035, mat(0x67615a, 0.26, 0.52), [0, 0.08, 0.275]);
-  addRoundedPanel(1.65, 0.96, 0.055, 0.035, 0.012, mat(0x080a0d, 0.23, 0.08, { emissive: 0x090d13, emissiveIntensity: 0.5 }), [0, 0.08, 0.338]);
+  // A wide, flush touchscreen gives the center stack a modern integrated silhouette.
+  addRoundedPanel(2.54, 1.56, 0.12, 0.105, 0.035, mat(0x777166, 0.24, 0.58), [0, 0.16, 0.275]);
+  addRoundedPanel(2.40, 1.42, 0.09, 0.035, 0.012, mat(0x080a0d, 0.2, 0.08, { emissive: 0x0b1015, emissiveIntensity: 0.62 }), [0, 0.16, 0.338]);
   const screenCanvas = document.createElement("canvas");
-  screenCanvas.width = 1200;
-  screenCanvas.height = 680;
+  screenCanvas.width = 2048;
+  screenCanvas.height = 1024;
   const screenContext = screenCanvas.getContext("2d");
   const screenTexture = new THREE.CanvasTexture(screenCanvas);
   screenTexture.colorSpace = THREE.SRGBColorSpace;
   function drawRadioScreen() {
     screenContext.fillStyle = "#080b0f";
-    screenContext.fillRect(0, 0, 1200, 680);
-    const glow = screenContext.createLinearGradient(0, 0, 1200, 680);
-    glow.addColorStop(0, "#1a2022");
-    glow.addColorStop(0.52, "#0b1013");
-    glow.addColorStop(1, "#1c1711");
+    screenContext.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+    const glow = screenContext.createLinearGradient(0, 0, screenCanvas.width, screenCanvas.height);
+    glow.addColorStop(0, "#172027");
+    glow.addColorStop(0.5, "#0a1015");
+    glow.addColorStop(1, "#1a1511");
     screenContext.fillStyle = glow;
-    screenContext.fillRect(0, 0, 1200, 680);
+    screenContext.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+    screenContext.strokeStyle = "rgba(216, 194, 164, .24)";
+    screenContext.lineWidth = 2;
+    screenContext.beginPath();
+    screenContext.moveTo(140, 112);
+    screenContext.lineTo(1908, 112);
+    screenContext.stroke();
     screenContext.textAlign = "center";
-    screenContext.fillStyle = "rgba(240,190,130,.96)";
-    screenContext.font = "700 40px Arial, sans-serif";
-    screenContext.letterSpacing = "7px";
-    screenContext.fillText("TAELON 383", 600, 80);
+    screenContext.textBaseline = "middle";
+    screenContext.fillStyle = "rgba(235, 197, 151, .96)";
+    screenContext.font = "600 92px Inter, Segoe UI, Arial, sans-serif";
+    screenContext.letterSpacing = "12px";
+    screenContext.fillText("TAELON 383", 1024, 222);
     screenContext.fillStyle = "#f5f0e7";
-    screenContext.font = "900 96px Arial, sans-serif";
-    screenContext.letterSpacing = "2px";
-    screenContext.fillText("LOW LOW", 600, 165);
-    screenContext.fillStyle = "rgba(238,222,199,.83)";
-    screenContext.font = "600 36px Arial, sans-serif";
-    screenContext.letterSpacing = "6px";
-    screenContext.fillText("OHNE ANSAGE", 600, 255);
+    screenContext.font = "700 176px Inter, Segoe UI, Arial, sans-serif";
+    screenContext.letterSpacing = "1px";
+    screenContext.fillText("LOW LOW", 1024, 456);
+    screenContext.fillStyle = "rgba(221, 213, 201, .84)";
+    screenContext.font = "600 76px Inter, Segoe UI, Arial, sans-serif";
+    screenContext.letterSpacing = "14px";
+    screenContext.fillText("OHNE ANSAGE", 1024, 626);
+    screenContext.strokeStyle = "rgba(216, 194, 164, .15)";
+    screenContext.beginPath();
+    screenContext.moveTo(140, 738);
+    screenContext.lineTo(1908, 738);
+    screenContext.stroke();
   }
   drawRadioScreen();
   screenTexture.needsUpdate = true;
   const screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false });
-  const screenFace = addMesh(new THREE.PlaneGeometry(1.65, 0.96), screenMaterial, radio, [0, 0.08, 0.382]);
+  const screenFace = addMesh(new THREE.PlaneGeometry(2.40, 1.42), screenMaterial, radio, [0, 0.16, 0.382]);
   screenFace.renderOrder = 3;
   const waveformCanvas = document.createElement("canvas");
-  waveformCanvas.width = 768;
-  waveformCanvas.height = 144;
+  waveformCanvas.width = 1536;
+  waveformCanvas.height = 192;
   const waveformContext = waveformCanvas.getContext("2d");
   const waveformTexture = new THREE.CanvasTexture(waveformCanvas);
   waveformTexture.colorSpace = THREE.SRGBColorSpace;
@@ -439,25 +582,26 @@ function createWorld(THREE) {
   waveformTexture.minFilter = THREE.LinearFilter;
   waveformTexture.magFilter = THREE.LinearFilter;
   const waveformMaterial = new THREE.MeshBasicMaterial({ map: waveformTexture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-  const waveform = addMesh(new THREE.PlaneGeometry(1.5, 0.28), waveformMaterial, radio, [0, 0.05, 0.416]);
+  const waveform = addMesh(new THREE.PlaneGeometry(2.04, 0.23), waveformMaterial, radio, [0, -0.19, 0.416]);
   waveform.renderOrder = 5;
 
-  // Machined knobs, vents, climate keys, and the hazard switch sit on a front-lit fascia.
-  const knobMetal = mat(0x9a8e7d, 0.28, 0.52);
-  for (const [x, radius] of [[-1.03, 0.145], [1.03, 0.132]]) {
-    addMesh(new THREE.CylinderGeometry(radius, radius * 1.04, 0.12, 32), mat(0x414044, 0.3, 0.42), radio, [x, 0.08, 0.305], [Math.PI / 2, 0, 0]);
-    const ring = addMesh(new THREE.TorusGeometry(radius * 0.86, 0.014, 8, 36), knobMetal, radio, [x, 0.08, 0.371]);
+  // Slim air vents and a pair of premium climate knobs frame the touchscreen.
+  const ventCasing = mat(0x101114, 0.62, 0.2);
+  addRoundedPanel(2.16, 0.19, 0.06, 0.055, 0.012, ventCasing, [0, 1.08, 0.3]);
+  for (let i = 0; i < 5; i += 1) {
+    addMesh(new THREE.BoxGeometry(1.82, 0.012, 0.024), mat(0x8c8579, 0.38, 0.48), radio, [0, 1.02 + i * 0.026, 0.342]);
+  }
+  const knobMetal = mat(0xb1a18a, 0.23, 0.64);
+  for (const x of [-0.9, 0.9]) {
+    addMesh(new THREE.CylinderGeometry(0.11, 0.12, 0.13, 40), mat(0x25262a, 0.28, 0.55), radio, [x, -0.91, 0.34], [Math.PI / 2, 0, 0]);
+    const ring = addMesh(new THREE.TorusGeometry(0.096, 0.012, 8, 40), knobMetal, radio, [x, -0.91, 0.414]);
     ring.renderOrder = 2;
-    addMesh(new THREE.BoxGeometry(0.018, radius * 0.36, 0.018), mat(0xf0c37b, 0.25, 0.3, { emissive: 0x513419, emissiveIntensity: 0.4 }), radio, [x, 0.08 + radius * 0.55, 0.374]);
+    addMesh(new THREE.BoxGeometry(0.012, 0.034, 0.012), mat(0xf0c37b, 0.25, 0.3, { emissive: 0x513419, emissiveIntensity: 0.4 }), radio, [x, -0.86, 0.417]);
   }
-  addMesh(new THREE.BoxGeometry(1.68, 0.24, 0.06), mat(0x101114, 0.72, 0.24), radio, [0, 0.87, 0.32]);
-  for (let i = 0; i < 7; i += 1) {
-    addMesh(new THREE.BoxGeometry(1.46, 0.014, 0.018), mat(0x76716b, 0.45, 0.35), radio, [0, 0.78 + i * 0.029, 0.362]);
-  }
-  for (let i = 0; i < 6; i += 1) {
-    const x = -0.51 + i * 0.204;
-    addRoundedPanel(0.14, 0.075, 0.022, 0.045, 0.008, mat(0x29282a, 0.28, 0.58), [x, -0.73, 0.28]);
-    addMesh(new THREE.BoxGeometry(0.028, 0.012, 0.012), mat(i === 2 ? 0xf1bd79 : 0xa7a0a1, 0.25, 0.45, { emissive: i === 2 ? 0x5b3214 : 0x151515, emissiveIntensity: 0.28 }), radio, [x, -0.73, 0.316]);
+  for (let i = 0; i < 3; i += 1) {
+    const x = -0.22 + i * 0.22;
+    addRoundedPanel(0.14, 0.07, 0.022, 0.04, 0.008, mat(0x28292d, 0.3, 0.56), [x, -0.91, 0.3]);
+    addMesh(new THREE.BoxGeometry(0.024, 0.01, 0.012), mat(i === 1 ? 0xe6b97c : 0x9b9a9b, 0.25, 0.45, { emissive: i === 1 ? 0x5b3214 : 0x151515, emissiveIntensity: 0.25 }), radio, [x, -0.91, 0.33]);
   }
   const hazardShape = new THREE.Shape();
   hazardShape.moveTo(0, 0.065);
@@ -495,7 +639,7 @@ function createWorld(THREE) {
   }
 
   // A restrained drifting veil gives the lamps depth; the count drops on phones.
-  const particleCount = mobile.matches ? 110 : 210;
+  const particleCount = mobile.matches ? 112 : 220;
   const positions = new Float32Array(particleCount * 3);
   for (let i = 0; i < particleCount; i += 1) {
     positions[i * 3] = (random() - 0.5) * 20;
@@ -507,13 +651,24 @@ function createWorld(THREE) {
   const particleMaterial = new THREE.PointsMaterial({ color: 0xb5a9a0, size: mobile.matches ? 0.024 : 0.032, transparent: true, opacity: 0.34, depthWrite: false, sizeAttenuation: true });
   const particles = new THREE.Points(particleGeometry, particleMaterial);
   world.add(particles);
+  let activeParticleCount = particleCount;
+  function setQualityTier(nextTier) {
+    qualityTier = THREE.MathUtils.clamp(nextTier, minimumQualityTier, 2);
+    renderer.setPixelRatio(pixelRatioForTier());
+    renderer.setSize(Math.max(1, window.innerWidth), Math.max(1, window.innerHeight), false);
+    activeParticleCount = Math.max(16, Math.floor(particleCount * [1, 0.56, 0.24][qualityTier]));
+    particleGeometry.setDrawRange(0, activeParticleCount);
+    particleMaterial.opacity = [0.3, 0.2, 0.12][qualityTier];
+    particleMaterial.size = mobile.matches ? 0.024 : 0.032;
+  }
+  setQualityTier(qualityTier);
 
   const cameraKeys = [
-    { p: 0, position: [-1.0, 2.05, 10.5], target: [-1.0, 0.6, -15], fov: 51, mobile: { fov: 53 } },
-    { p: 0.18, position: [-0.45, 1.95, 5.1], target: [0, 1.0, -7.0], fov: 50 },
-    { p: 0.34, position: [0, 1.76, 4.45], target: [0, 1.5, -2.86], fov: 46, mobile: { position: [0.24, 1.76, 4.45], fov: 52 } },
-    { p: 0.49, position: [0, 1.66, 2.0], target: [0, 1.54, -2.86], fov: 35, mobile: { position: [0.85, 1.66, 2.0], fov: 60 } },
-    { p: 0.62, position: [0, 1.66, 2.0], target: [0, 1.54, -2.86], fov: 35, mobile: { position: [0.85, 1.66, 2.0], fov: 60 } },
+    { p: 0, position: [-0.25, 2.4, 7.0], target: [-0.2, 1.55, -3.8], fov: 47, mobile: { position: [-0.12, 2.3, 6.0], target: [-0.1, 1.45, -3.8], fov: 56 } },
+    { p: 0.18, position: [-0.15, 2.15, 5.4], target: [0, 1.48, -5.25], fov: 48, mobile: { position: [-0.12, 2.18, 5.4], target: [-0.08, 1.52, -4.7], fov: 56 } },
+    { p: 0.34, position: [0, 1.76, 4.45], target: [0, 1.5, -2.86], fov: 46, mobile: { position: [0.12, 1.76, 5.0], fov: 60 } },
+    { p: 0.49, position: [0, 1.66, 2.0], target: [0, 1.54, -2.86], fov: 35, mobile: { position: [0.08, 1.66, 4.5], fov: 58 } },
+    { p: 0.62, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.75, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.87, position: [0, 1.55, -13.6], target: [0, 1.55, -17.3], fov: 40 },
     { p: 1, position: [0, 1.35, -21.5], target: [0, 1.55, -26.2], fov: 47 }
@@ -530,10 +685,15 @@ function createWorld(THREE) {
   let frameId = 0;
   let visible = !document.hidden;
 
+  function requestRender() {
+    if (!visible || frameId) return;
+    frameId = requestAnimationFrame(render);
+  }
   function measureScroll() {
     viewportHeight = window.innerHeight;
     scrollSpan = Math.max(1, document.documentElement.scrollHeight - viewportHeight);
     exactProgress = Math.min(1, Math.max(0, window.scrollY / scrollSpan));
+    requestRender();
   }
   function sampleCamera(progress) {
     let index = 0;
@@ -564,71 +724,112 @@ function createWorld(THREE) {
   function resize() {
     const width = Math.max(1, window.innerWidth);
     const height = Math.max(1, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, quality()));
+    renderer.setPixelRatio(pixelRatioForTier());
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     measureScroll();
   }
   let lastWaveUpdate = -1;
-  function updateBars(time) {
+  function updateWave(time) {
     if (analyser && frequencyData) analyser.getByteFrequencyData(frequencyData);
     const p = exactProgress;
     waveform.visible = p > 0.27 && p < 0.72;
     if (!waveform.visible) return;
-    if (reducedMotion.matches && lastWaveUpdate >= 0) return;
-    if (!reducedMotion.matches && time - lastWaveUpdate < 1 / 30) return;
-    lastWaveUpdate = time;
     const playing = audio && !audio.paused && !audio.ended;
-    const count = 48;
-    const baseY = 116;
+    if (reducedMotion.matches && lastWaveUpdate >= 0) return;
+    if (!reducedMotion.matches && time - lastWaveUpdate < 1 / 24) return;
+    lastWaveUpdate = time;
     waveformContext.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
     const gradient = waveformContext.createLinearGradient(0, 0, waveformCanvas.width, 0);
-    gradient.addColorStop(0, "#bd8150");
-    gradient.addColorStop(0.48, "#ffe0ad");
-    gradient.addColorStop(1, "#d58a54");
+    gradient.addColorStop(0, "#b97b4e");
+    gradient.addColorStop(0.5, "#ffe3b1");
+    gradient.addColorStop(1, "#ce8d5b");
     waveformContext.save();
-    waveformContext.shadowColor = playing ? "rgba(244,177,103,.84)" : "rgba(244,177,103,.48)";
-    waveformContext.shadowBlur = playing ? 14 : 7;
-    waveformContext.fillStyle = gradient;
-    for (let i = 0; i < count; i += 1) {
-      const binIndex = Math.min((frequencyData?.length || 1) - 1, Math.floor(i / count * (frequencyData?.length || 1)));
-      const spectrum = playing && frequencyData ? Math.pow(frequencyData[binIndex] / 255, 0.72) : 0;
-      const idlePulse = reducedMotion.matches ? 0 : Math.abs(Math.sin(time * 1.4 + i * 0.31)) * 25;
-      const musicPulse = playing && !reducedMotion.matches ? Math.abs(Math.sin(time * 7.4 - i * 0.18)) * 14 : 0;
-      const height = Math.min(92, 30 + idlePulse + spectrum * 68 + musicPulse);
-      const x = 10 + i * 15.8;
-      waveformContext.fillRect(x, baseY - height, 8, height);
-      waveformContext.globalAlpha = 0.18;
-      waveformContext.fillRect(x, baseY + 4, 8, height * 0.24);
-      waveformContext.globalAlpha = 1;
+    const centerY = waveformCanvas.height / 2;
+    const sampleCount = 320;
+    const maxAmplitude = playing ? 82 : 70;
+    let spectrumEnergy = 0;
+    if (playing && frequencyData) {
+      const bands = [[1, 7, 0.56], [7, 30, 0.3], [30, 90, 0.14]];
+      for (const [start, end, weight] of bands) {
+        let total = 0;
+        for (let bin = start; bin < Math.min(end, frequencyData.length); bin += 1) total += frequencyData[bin] / 255;
+        spectrumEnergy += total / Math.max(1, Math.min(end, frequencyData.length) - start) * weight;
+      }
+    }
+    waveformContext.strokeStyle = "rgba(255, 226, 185, .14)";
+    waveformContext.lineWidth = 2;
+    waveformContext.beginPath();
+    waveformContext.moveTo(24, centerY);
+    waveformContext.lineTo(waveformCanvas.width - 24, centerY);
+    waveformContext.stroke();
+    function drawCurve(stroke, width, alpha, glow) {
+      waveformContext.globalAlpha = alpha;
+      waveformContext.strokeStyle = stroke;
+      waveformContext.lineWidth = width;
+      waveformContext.shadowColor = "rgba(246, 184, 116, .78)";
+      waveformContext.shadowBlur = glow;
+      waveformContext.lineJoin = "round";
+      waveformContext.lineCap = "round";
+      waveformContext.beginPath();
+      for (let i = 0; i < sampleCount; i += 1) {
+        const position = i / (sampleCount - 1);
+        const phase = i * 0.082;
+        const carrier =
+          Math.sin(phase + (reducedMotion.matches ? 0 : time * (playing ? 2.2 : 0.7))) * 0.58 +
+          Math.sin(phase * 1.82 - time * 1.15) * 0.27 +
+          Math.sin(phase * 3.1 + time * 0.62) * 0.15;
+        const bandIndex = 1 + Math.floor(Math.pow(position, 1.65) * Math.min(88, (frequencyData?.length || 89) - 1));
+        const localEnergy = playing && frequencyData ? frequencyData[bandIndex] / 255 : 0;
+        const envelope = playing
+          ? 0.07 + spectrumEnergy * 0.22 + localEnergy * 0.34
+          : 0.035;
+        const raw = carrier * envelope;
+        const shaped = Math.sign(raw) * Math.sqrt(Math.abs(raw));
+        const x = 18 + position * (waveformCanvas.width - 36);
+        const y = centerY - shaped * maxAmplitude;
+        if (i === 0) waveformContext.moveTo(x, y);
+        else waveformContext.lineTo(x, y);
+      }
+      waveformContext.stroke();
     }
     waveformContext.shadowBlur = 0;
-    waveformContext.fillStyle = "rgba(244,190,132,.74)";
-    waveformContext.fillRect(8, baseY, waveformCanvas.width - 16, 2);
+    drawCurve(gradient, 15, 0.2, 24);
+    drawCurve(gradient, 4, 0.98, 12);
     waveformContext.restore();
     waveformTexture.needsUpdate = true;
   }
+  let qualityFrames = 0;
+  let slowFrames = 0;
+  let qualityWindowStart = performance.now();
+  function adaptQuality(now, dt) {
+    qualityFrames += 1;
+    if (dt > 1 / 36) slowFrames += 1;
+    if (now - qualityWindowStart < 3500 || qualityFrames < 45) return;
+    const slowRatio = slowFrames / qualityFrames;
+    if (slowRatio > 0.25 && qualityTier < 2) setQualityTier(qualityTier + 1);
+    else if (slowRatio < 0.08 && qualityTier > minimumQualityTier) setQualityTier(qualityTier - 1);
+    qualityFrames = 0;
+    slowFrames = 0;
+    qualityWindowStart = now;
+  }
   function render(now) {
-    if (!visible) {
-      frameId = 0;
-      return;
-    }
-    frameId = requestAnimationFrame(render);
-    const dt = Math.min(0.05, Math.max(0.001, (now - (lastTime || now)) / 1000));
+    frameId = 0;
+    if (!visible) return;
+    const frameDelta = Math.max(0.001, (now - (lastTime || now)) / 1000);
+    const dt = Math.min(0.05, frameDelta);
     lastTime = now;
-    elapsed += dt;
+    elapsed += frameDelta;
+    adaptQuality(now, dt);
     smoothProgress = exactProgress;
     document.body.classList.toggle("radio-focus", smoothProgress > 0.45 && smoothProgress < 0.66);
     sampleCamera(smoothProgress);
-    const damping = reducedMotion.matches ? 1 : 1 - Math.exp(-12 * dt);
+    const damping = reducedMotion.matches ? 1 : 1 - Math.exp(-12 * frameDelta);
     camera.position.lerp(goalPosition, damping);
     currentTarget.lerp(goalTarget, damping);
     camera.lookAt(currentTarget);
 
-    const nightColor = new THREE.Color(0x0d1118);
-    const redColor = new THREE.Color(0x10090e);
-    const goldColor = new THREE.Color(0x100e0d);
     if (smoothProgress < 0.64) scene.background.copy(nightColor).lerp(redColor, THREE.MathUtils.smoothstep(smoothProgress, 0.28, 0.64));
     else scene.background.copy(redColor).lerp(goldColor, THREE.MathUtils.smoothstep(smoothProgress, 0.64, 0.89));
     scene.fog.color.copy(scene.background);
@@ -642,14 +843,14 @@ function createWorld(THREE) {
     albumMaterial.opacity = albumIn;
     albumFrame.scale.setScalar(0.96 + albumIn * 0.04);
     if (smoothProgress > 0.65 && smoothProgress < 0.94) loadAlbum();
-    updateBars(elapsed);
+    updateWave(elapsed);
     if (!reducedMotion.matches && smoothProgress < 0.31) {
       for (const dash of roadMarkings) {
         dash.position.z -= dt * (1.4 + smoothProgress * 3.3);
         if (dash.position.z < -72) dash.position.z += 65.6;
       }
       const p = particleGeometry.attributes.position;
-      for (let i = 0; i < particleCount; i += 1) {
+      for (let i = 0; i < activeParticleCount; i += 1) {
         p.array[i * 3 + 2] += dt * (0.8 + (i % 5) * 0.22);
         if (p.array[i * 3 + 2] > 2) p.array[i * 3 + 2] = -92;
       }
@@ -660,6 +861,13 @@ function createWorld(THREE) {
       }
     }
     renderer.render(scene, camera);
+    const cameraSettled =
+      camera.position.distanceToSquared(goalPosition) < 0.00002 &&
+      currentTarget.distanceToSquared(goalTarget) < 0.00002;
+    const ambientMotion =
+      !reducedMotion.matches &&
+      (smoothProgress < 0.31 || (smoothProgress > 0.27 && smoothProgress < 0.68));
+    if (!cameraSettled || ambientMotion) frameId = requestAnimationFrame(render);
   }
 
   window.addEventListener("scroll", measureScroll, { passive: true });
@@ -671,7 +879,7 @@ function createWorld(THREE) {
     visible = !document.hidden;
     if (visible) {
       lastTime = 0;
-      if (!frameId) frameId = requestAnimationFrame(render);
+      requestRender();
     } else {
       cancelAnimationFrame(frameId);
       frameId = 0;
@@ -685,7 +893,11 @@ function createWorld(THREE) {
   return {
     start() {
       measureScroll();
-      frameId = requestAnimationFrame(render);
+      requestRender();
+    },
+    refreshWave() {
+      lastWaveUpdate = -1;
+      requestRender();
     }
   };
 }

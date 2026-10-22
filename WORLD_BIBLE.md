@@ -74,9 +74,9 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 ### Starting performance budget
 
 - Critical code target: 2.4 MB uncompressed; the renderer and semantic shell load before any large art asset.
-- Mobile DPR cap: 1.2; desktop cap: 1.65.
+- Mobile DPR cap: 2; desktop cap: 1.8. The quality governor reduces render scale and particles when more than a quarter of frames exceed about 28 ms across a 3.5-second window.
 - No post-processing or real-time shadows; emissive materials and small glow sprites carry the night lighting.
-- Particle count: 110 on phone, 210 on larger screens.
+- Particle count: 112 on phone, 220 on larger screens, reduced to 56% or 24% at lower quality tiers.
 - Target: responsive 60 fps on recent phones; reduce continuous motion under `prefers-reduced-motion` and pause rendering when the tab is hidden.
 - Local artwork and music are copied into this site so a standalone GitHub Pages deployment does not depend on the parent producer workspace.
 
@@ -89,9 +89,11 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 - [ ] Check loaded local assets and browser console; test at least one actual phone before publication.
 - [ ] Confirm the Instagram destination; do not publish or deploy as part of this local draft.
 
-### Verified in this draft
+### Current browser review — 22 October 2026
 
-- Browser layouts checked at 390×844, 768×1024, and 1440×900 with no horizontal overflow.
-- Muted user-activation test confirmed the 30-second audio duration, continued playback during scrolling, and working pause/stop controls.
+- Playwright Chromium with software WebGL rendered at 320×700, 390×844, 768×1024, 1024×800, and 1440×900. Every width matched the viewport, WebGL initialized, and no console errors or local request failures occurred.
+- At 390×844, the audio reports 30 seconds, continues while scrolling, and responds to pause and stop. The album artwork loads at 1254×1254 in its own chapter.
 - Reduced-motion emulation and the `/album.html` redirect to the album chapter were checked.
-- The browser reported no JavaScript errors during these checks. Physical-phone performance, WebGL fallback, keyboard-only navigation, and 200% zoom still need review before publication.
+- Reduced-motion emulation kept scrolling and audio usable; the radio wave is drawn once and held still. The screen reader has a text description of the canvas radio labels.
+- The WebGL loop continues during the driving and radio motion, then stops after the camera settles in static album and ending scenes.
+- This was desktop Chromium with software WebGL, not a physical phone. Real-device frame rate, WebGL-loss fallback, keyboard-only review, 200% zoom, and iOS/Android browser behavior remain unverified.
