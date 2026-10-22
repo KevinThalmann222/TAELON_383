@@ -9,7 +9,7 @@
 ## Confirmed facts and creative proposal
 
 - Confirmed: TAELON 383 is a rap newcomer; the upcoming rap album is titled **OHNE ANSAGE**; the Instagram destination is `@taelon_383`.
-- Confirmed project assets: `assets/images/low-low-cover.png` is the LOW LOW cover the user supplied from the parent workspace's `reels/` folder; `assets/ohne-ansage-cover.png` is the existing album cover.
+- Confirmed project assets: `assets/images/icon-low-low.png` is the user-supplied square LOW LOW image used as a small radio thumbnail; `assets/images/low-low-cover.png` is retained but not shown in the radio; `assets/ohne-ansage-cover.png` is the existing album cover.
 - Confirmed audio use for this local draft: the opening of the approved Reel excerpt, from 00:43 for 30 seconds, is copied as `assets/audio/low-low-30s.wav`.
 - No release date, official listening link, further track title, or biography is stated.
 - The car, city, lights, and camera journey are stylized generated geometry. They are an authored music experience, not documentary footage or a claim about a real drive.
@@ -33,7 +33,7 @@
 | Album gold | `#E7BB78` | OHNE ANSAGE scene and confirmed status |
 | Readable ivory | `#F3EEE5` | headings, controls, story copy |
 
-- Units: one world unit is approximately one metre; cockpit width is roughly 9 units.
+- Scene proportions: relative units, not a claim of manufacturer dimensions. The steering wheel's outer diameter is 1.24 units; the active display spans 1.15 units, just under the wheel diameter.
 - Lens: perspective camera with a mobile-authored portrait composition; no artificial camera roll.
 - Materials: dark rough leather and road; brushed metal console; lightly tinted windshield glass; emissive display, lamps, and radio bars.
 - Motion grammar: slow forward glide, gradual camera dive, short radio hold, warm reveal of the album, quiet CTA landing.
@@ -45,7 +45,7 @@
 | --- | --- | --- | --- |
 | 0–18% | Enter the night | Driver/passenger cockpit, windshield, distant road | TAELON 383; visible “Radio einschalten” control |
 | 18–34% | Approach | Moving road marks, city blocks, amber lights | “Die Stadt zieht vorbei.” |
-| 34–62% | Radio | The integrated center stack resolves into a clear radio close-up; the display reads “TAELON 383”, “LOW LOW”, and “OHNE ANSAGE” above a gold audio-reactive waveform | Track identity and free pause/stop controls |
+| 34–62% | Radio | The integrated center stack resolves into a clear radio close-up; a small square artwork thumbnail sits beside “TAELON 383”, “LOW LOW”, and “OHNE ANSAGE”, with a gold audio-reactive waveform below | Track identity and free pause/stop controls |
 | 62–87% | Album | Camera leaves the dashboard for the OHNE ANSAGE cover landmark | Confirmed album description and “Veröffentlichung folgt” |
 | 87–100% | Arrival | Warm light falls away to a quiet closing frame | Artist fact and one Instagram CTA |
 
@@ -67,7 +67,8 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 | --- | --- | --- |
 | `vendor/three.module.js`, `vendor/three.core.js` | Three.js 0.186.1, local ES modules, MIT | Initial renderer |
 | `assets/audio/low-low-30s.wav` | 00:43–01:13 from project `Low, Low.wav`; PCM 16-bit stereo, 48 kHz | `preload="none"`; only requested after user activation |
-| `assets/images/low-low-cover.png` | User-provided LOW LOW cover, preserved as a project asset | Not displayed in the radio; the user prefers a clean typographic display |
+| `assets/images/icon-low-low.png` | User-supplied square LOW LOW artwork, shown as a small rounded thumbnail inside the radio display | Loaded with the 3D experience; no platform logos are present |
+| `assets/images/low-low-cover.png` | Earlier user-provided cover variant, preserved as a project asset | Not displayed in the radio |
 | `assets/ohne-ansage-cover.png` | Existing album cover | Requested near the album chapter |
 | `assets/nachtfahrt.png` | Existing generated night-car mood image | Only used if WebGL cannot start |
 
@@ -80,20 +81,11 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 - Target: responsive 60 fps on recent phones; reduce continuous motion under `prefers-reduced-motion` and pause rendering when the tab is hidden.
 - Local artwork and music are copied into this site so a standalone GitHub Pages deployment does not depend on the parent producer workspace.
 
-## QA checklist
+## QA status — 22 October 2026
 
-- [ ] Confirm all camera beats at phone (390×844), tablet (768×1024), and desktop (1440×900).
-- [ ] Check slow, fast, forward, reverse, anchor, and direct-scroll paths.
-- [ ] Confirm audio starts only after activation, continues while scrolling, and pause/stop work.
-- [ ] Check WebGL fallback, reduced motion, keyboard order, 200% zoom, focus and readable contrast.
-- [ ] Check loaded local assets and browser console; test at least one actual phone before publication.
-- [ ] Confirm the Instagram destination; do not publish or deploy as part of this local draft.
-
-### Current browser review — 22 October 2026
-
-- Playwright Chromium with software WebGL rendered at 320×700, 390×844, 768×1024, 1024×800, and 1440×900. Every width matched the viewport, WebGL initialized, and no console errors or local request failures occurred.
-- At 390×844, the audio reports 30 seconds, continues while scrolling, and responds to pause and stop. The album artwork loads at 1254×1254 in its own chapter.
-- Reduced-motion emulation and the `/album.html` redirect to the album chapter were checked.
-- Reduced-motion emulation kept scrolling and audio usable; the radio wave is drawn once and held still. The screen reader has a text description of the canvas radio labels.
-- The WebGL loop continues during the driving and radio motion, then stops after the camera settles in static album and ending scenes.
-- This was desktop Chromium with software WebGL, not a physical phone. Real-device frame rate, WebGL-loss fallback, keyboard-only review, 200% zoom, and iOS/Android browser behavior remain unverified.
+- Playwright Chromium with software WebGL rendered at 320×844, 390×844, 768×1024, 1024×800, and 1440×900. Each document's scroll width matched its viewport; WebGL initialized, the supplied thumbnail returned HTTP 200, and there were no JavaScript errors or failed local requests.
+- On mobile and desktop, the radio camera reached the display with the chapter copy faded out. The phone view was also checked at the close-up and album beats. The center display is 1.15 scene units wide versus a 1.24-unit steering wheel diameter; the gauges stay to the left of the display.
+- The WAV header contains 5,760,000 bytes at 192,000 bytes per second, an exact 30-second PCM excerpt. Chromium plays it to 29.994667 seconds; the visible and accessible player display rounds the completed excerpt to `00:30 / 00:30`. Playback continued during scroll, and pause and stop both worked.
+- A playing-state screenshot confirmed the waveform animates with the audio. Album artwork loaded at 1254×1254. Reduced-motion emulation rendered without errors; the first keyboard Tab reaches the skip link.
+- With WebGL disabled, the readable HTML story remained available, the canvas hid, and the narrow view had no horizontal overflow.
+- These checks ran in desktop Chromium with software WebGL. A real phone, mobile-browser frame rate, 200% browser zoom, and iOS/Android rendering still need device testing before publication. The site has not been pushed or deployed from this review.

@@ -237,7 +237,7 @@ main { position: relative; z-index: 1; }
 .chapter-copy-radio { max-width: 360px; }
 .chapter-radio h2 { font-size: clamp(48px, 11vw, 82px); letter-spacing: .04em; }
 .chapter-radio .chapter-lead { max-width: 320px; margin: 10px 0 0; font-size: 12px; }
-body.radio-focus .chapter-radio.is-active .chapter-copy-radio { transform: translateY(-12px); opacity: 0; pointer-events: none; }
+body.radio-focus .chapter-radio .chapter-copy-radio { transform: translateY(-12px); opacity: 0; pointer-events: none; }
 
 .chapter-album {
   min-height: 110svh;

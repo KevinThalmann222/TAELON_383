@@ -22,17 +22,20 @@ function syncAudioControls() {
   if (!audio) return;
   const playing = !audio.paused && !audio.ended;
   const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-  const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+  const rawDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 30;
+  const isThirtySecondExcerpt = Math.abs(rawDuration - 30) < 0.1;
+  const duration = isThirtySecondExcerpt ? 30 : rawDuration;
+  const displayedCurrent = audio.ended && isThirtySecondExcerpt ? 30 : current;
   toggleButton?.setAttribute("aria-pressed", String(playing));
   toggleButton?.setAttribute("aria-label", playing ? "LOW LOW pausieren" : "LOW LOW abspielen");
   const glyph = toggleButton?.querySelector(".play-glyph");
   if (glyph) glyph.textContent = playing ? "Ⅱ" : "▶";
   if (progressBar) {
     progressBar.max = duration;
-    progressBar.value = current;
-    progressBar.setAttribute("aria-valuetext", `${formatTime(current)} von ${formatTime(duration)}`);
+    progressBar.value = displayedCurrent;
+    progressBar.setAttribute("aria-valuetext", `${formatTime(displayedCurrent)} von ${formatTime(duration)}`);
   }
-  if (timeLabel) timeLabel.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+  if (timeLabel) timeLabel.textContent = `${formatTime(displayedCurrent)} / ${formatTime(duration)}`;
   for (const button of playButtons) {
     button.setAttribute("aria-pressed", String(playing));
     const label = button.querySelector("span:last-child");
@@ -362,10 +365,10 @@ function createWorld(THREE) {
   });
   dashboardGeometry.translate(0, 0, -0.775);
   addMesh(dashboardGeometry, leather, cabin, [0, 0, -3.16]);
-  addMesh(new THREE.BoxGeometry(8.8, 0.28, 1.42), dashLeather, cabin, [0, 1.42, -3.2]);
-  addMesh(new THREE.BoxGeometry(8.9, 0.035, 1.3), mat(0x303036, 0.72, 0.025), cabin, [0, 1.574, -3.22]);
+  addMesh(new THREE.BoxGeometry(8.8, 0.15, 1.02), dashLeather, cabin, [0, 0.42, -3.2]);
+  addMesh(new THREE.BoxGeometry(8.9, 0.025, 0.94), mat(0x303036, 0.72, 0.025), cabin, [0, 0.515, -3.22]);
   addMesh(new THREE.BoxGeometry(8.72, 1.35, 0.36), leather, cabin, [0, -0.18, -2.58]);
-  addMesh(new THREE.BoxGeometry(8.5, 0.045, 0.26), brushed, cabin, [0, 0.16, -2.405]);
+  addMesh(new THREE.BoxGeometry(8.5, 0.035, 0.2), brushed, cabin, [0, 0.39, -2.405]);
   addMesh(new THREE.BoxGeometry(4.7, 0.016, 0.016), mat(0xb87346, 0.34, 0.25, { emissive: 0x7c3d1c, emissiveIntensity: 0.24 }), cabin, [0.35, 0.08, -2.38]);
   addMesh(new THREE.BoxGeometry(2.2, 0.3, 0.26), dashLeather, cabin, [2.62, 0.66, -2.39]);
   addMesh(new THREE.BoxGeometry(1.8, 0.012, 0.012), seam, cabin, [2.62, 0.5, -2.245]);
@@ -393,7 +396,7 @@ function createWorld(THREE) {
   addMesh(new THREE.BoxGeometry(8.75, 0.035, 0.11), brushed, cabin, [0, 1.34, -2.36]);
   const stitchMaterial = new THREE.MeshBasicMaterial({ color: 0x77706b, transparent: true, opacity: 0.52 });
   for (let i = 0; i < 39; i += 1) {
-    addMesh(new THREE.BoxGeometry(0.055, 0.009, 0.008), stitchMaterial, cabin, [-4.15 + i * 0.218, 1.365, -2.34]);
+    addMesh(new THREE.BoxGeometry(0.055, 0.009, 0.008), stitchMaterial, cabin, [-4.15 + i * 0.218, 0.595, -2.34]);
   }
   // Side door caps and armrests give the dashboard a clear cabin silhouette in portrait view.
   for (const side of [-1, 1]) {
@@ -403,14 +406,14 @@ function createWorld(THREE) {
     addMesh(new THREE.BoxGeometry(0.34, 0.035, 0.28), brushed, cabin, [side * 4.01, 1.04, -2.04], [0, side * -0.08, 0]);
     addMesh(new THREE.BoxGeometry(0.045, 0.035, 0.12), mat(0xd4c7b2, 0.23, 0.72), cabin, [side * 3.96, 1.03, -2.02]);
   }
-  const stack = addMesh(new THREE.BoxGeometry(3.24, 2.7, 0.58), dashLeather, cabin, [0, 1.43, -3.04]);
+  const stack = addMesh(new THREE.BoxGeometry(2.28, 1.78, 0.5), soft, cabin, [0, 1.46, -2.60]);
   stack.rotation.x = -0.055;
   addMesh(new THREE.BoxGeometry(2.7, 0.7, 0.72), leather, cabin, [2.75, 0.96, -3.18]);
   addMesh(new THREE.BoxGeometry(0.92, 0.035, 0.045), brushed, cabin, [2.72, 1.0, -2.81]);
   addMesh(new THREE.BoxGeometry(2.6, 0.18, 0.38), soft, cabin, [-3.08, 1.79, -2.72]);
 
   // Twin instrument dials stay visible above the steering wheel.
-  const dialCenters = [-1.78, -0.98];
+  const dialCenters = [-2.58, -1.78];
   const dialFace = new THREE.MeshBasicMaterial({ color: 0x0c0e12, toneMapped: false });
   const dialMark = new THREE.MeshBasicMaterial({ color: 0xd99d62, toneMapped: false });
   for (const x of dialCenters) {
@@ -424,22 +427,23 @@ function createWorld(THREE) {
     const needle = addMesh(new THREE.BoxGeometry(0.014, 0.21, 0.012), new THREE.MeshBasicMaterial({ color: 0xf1dfc0, toneMapped: false }), cabin, [x, 1.73, -2.432]);
     needle.rotation.z = 0.24;
   }
-  const wheelPosition = [-1.38, 1.25, -1.78];
+  const wheelX = -1.75;
+  const wheelPosition = [wheelX, 1.25, -1.78];
   const wheel = addMesh(new THREE.TorusGeometry(0.62, 0.066, 16, 72), mat(0x363236, 0.48, 0.045), cabin, wheelPosition);
   wheel.rotation.y = 0.04;
-  addMesh(new THREE.TorusGeometry(0.62, 0.014, 8, 72), mat(0x766b5c, 0.38, 0.2), cabin, [-1.38, 1.25, -1.79]);
+  addMesh(new THREE.TorusGeometry(0.62, 0.014, 8, 72), mat(0x766b5c, 0.38, 0.2), cabin, [wheelX, 1.25, -1.79]);
   addMesh(new THREE.CylinderGeometry(0.17, 0.17, 0.22, 32), mat(0x27272b, 0.52, 0.08), cabin, wheelPosition, [Math.PI / 2, 0, 0]);
-  addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.235, 32), brushed, cabin, [-1.38, 1.25, -1.8], [Math.PI / 2, 0, 0]);
-  addMesh(new THREE.BoxGeometry(0.16, 0.1, 0.045), mat(0x18191d, 0.4, 0.16), cabin, [-1.38, 1.25, -1.935]);
+  addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.235, 32), brushed, cabin, [wheelX, 1.25, -1.8], [Math.PI / 2, 0, 0]);
+  addMesh(new THREE.BoxGeometry(0.16, 0.1, 0.045), mat(0x18191d, 0.4, 0.16), cabin, [wheelX, 1.25, -1.935]);
   for (const angle of [0.5, 2.6, 4.7]) {
-    const spoke = addMesh(new THREE.BoxGeometry(0.075, 0.49, 0.06), brushed, cabin, [-1.38, 1.25, -1.82]);
+    const spoke = addMesh(new THREE.BoxGeometry(0.075, 0.49, 0.06), brushed, cabin, [wheelX, 1.25, -1.82]);
     spoke.rotation.z = angle;
   }
-  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [-1.38, 1.04, -1.9]);
-  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [-1.38, 1.46, -1.9]);
+  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [wheelX, 1.04, -1.9]);
+  addMesh(new THREE.BoxGeometry(0.22, 0.16, 0.075), soft, cabin, [wheelX, 1.46, -1.9]);
   for (const side of [-1, 1]) {
-    addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.035), mat(0x222328, 0.55, 0.18), cabin, [-1.38 + side * 0.39, 1.25, -1.89]);
-    addMesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mat(0xc49a6a, 0.32, 0.4, { emissive: 0x3c2110, emissiveIntensity: 0.24 }), cabin, [-1.38 + side * 0.39, 1.25, -1.867]);
+    addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.035), mat(0x222328, 0.55, 0.18), cabin, [wheelX + side * 0.39, 1.25, -1.89]);
+    addMesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mat(0xc49a6a, 0.32, 0.4, { emissive: 0x3c2110, emissiveIntensity: 0.24 }), cabin, [wheelX + side * 0.39, 1.25, -1.867]);
   }
   // Compact electronic selector: leather grip, satin-metal spine, and illuminated gear key.
   addMesh(new THREE.BoxGeometry(1.08, 0.1, 0.74), mat(0x17181c, 0.46, 0.18), cabin, [0.68, 0.45, 0.18]);
@@ -488,8 +492,9 @@ function createWorld(THREE) {
 
   const radio = new THREE.Group();
   radio.name = "center-stack-radio";
-  radio.position.set(0, 1.46, -2.86);
+  radio.position.set(0, 1.46, -2.25);
   radio.rotation.x = -0.045;
+  radio.scale.set(0.48, 0.56, 0.56);
   cabin.add(radio);
   function roundedRect(width, height, radius) {
     const x = width / 2;
@@ -519,55 +524,78 @@ function createWorld(THREE) {
     geometry.translate(0, 0, -depth / 2);
     return addMesh(geometry, material, radio, position);
   }
-  addRoundedPanel(3.06, 2.62, 0.27, 0.42, 0.07, mat(0x494640, 0.3, 0.52), [0, 0, 0]);
+  addRoundedPanel(3.06, 2.62, 0.27, 0.42, 0.07, mat(0x55585d, 0.3, 0.62), [0, 0, 0]);
   addRoundedPanel(2.94, 2.50, 0.24, 0.075, 0.022, mat(0x15161a, 0.48, 0.24), [0, 0, 0.215]);
   addRoundedPanel(2.84, 2.40, 0.22, 0.035, 0.01, mat(0x242529, 0.54, 0.2), [0, 0, 0.268]);
 
   // A wide, flush touchscreen gives the center stack a modern integrated silhouette.
-  addRoundedPanel(2.54, 1.56, 0.12, 0.105, 0.035, mat(0x777166, 0.24, 0.58), [0, 0.16, 0.275]);
+  addRoundedPanel(2.54, 1.56, 0.12, 0.105, 0.035, mat(0x666a70, 0.24, 0.66), [0, 0.16, 0.275]);
   addRoundedPanel(2.40, 1.42, 0.09, 0.035, 0.012, mat(0x080a0d, 0.2, 0.08, { emissive: 0x0b1015, emissiveIntensity: 0.62 }), [0, 0.16, 0.338]);
   const screenCanvas = document.createElement("canvas");
   screenCanvas.width = 2048;
-  screenCanvas.height = 1024;
+  screenCanvas.height = 1212;
   const screenContext = screenCanvas.getContext("2d");
   const screenTexture = new THREE.CanvasTexture(screenCanvas);
   screenTexture.colorSpace = THREE.SRGBColorSpace;
+  let radioCoverReady = false;
+  const radioCover = new Image();
+  function roundedCanvasRect(context, x, y, width, height, radius) {
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.lineTo(x + width - radius, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + radius);
+    context.lineTo(x + width, y + height - radius);
+    context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    context.lineTo(x + radius, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - radius);
+    context.lineTo(x, y + radius);
+    context.quadraticCurveTo(x, y, x + radius, y);
+    context.closePath();
+  }
   function drawRadioScreen() {
     screenContext.fillStyle = "#080b0f";
     screenContext.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
     const glow = screenContext.createLinearGradient(0, 0, screenCanvas.width, screenCanvas.height);
     glow.addColorStop(0, "#172027");
-    glow.addColorStop(0.5, "#0a1015");
-    glow.addColorStop(1, "#1a1511");
+    glow.addColorStop(0.54, "#0b1015");
+    glow.addColorStop(1, "#191512");
     screenContext.fillStyle = glow;
     screenContext.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
-    screenContext.strokeStyle = "rgba(216, 194, 164, .24)";
-    screenContext.lineWidth = 2;
-    screenContext.beginPath();
-    screenContext.moveTo(140, 112);
-    screenContext.lineTo(1908, 112);
-    screenContext.stroke();
-    screenContext.textAlign = "center";
+
+    screenContext.textAlign = "left";
     screenContext.textBaseline = "middle";
     screenContext.fillStyle = "rgba(235, 197, 151, .96)";
-    screenContext.font = "600 92px Inter, Segoe UI, Arial, sans-serif";
-    screenContext.letterSpacing = "12px";
-    screenContext.fillText("TAELON 383", 1024, 222);
-    screenContext.fillStyle = "#f5f0e7";
-    screenContext.font = "700 176px Inter, Segoe UI, Arial, sans-serif";
-    screenContext.letterSpacing = "1px";
-    screenContext.fillText("LOW LOW", 1024, 456);
-    screenContext.fillStyle = "rgba(221, 213, 201, .84)";
     screenContext.font = "600 76px Inter, Segoe UI, Arial, sans-serif";
-    screenContext.letterSpacing = "14px";
-    screenContext.fillText("OHNE ANSAGE", 1024, 626);
-    screenContext.strokeStyle = "rgba(216, 194, 164, .15)";
-    screenContext.beginPath();
-    screenContext.moveTo(140, 738);
-    screenContext.lineTo(1908, 738);
-    screenContext.stroke();
+    screenContext.fillText("TAELON 383", 624, 324);
+    screenContext.fillStyle = "#f5f0e7";
+    screenContext.font = "700 154px Inter, Segoe UI, Arial, sans-serif";
+    screenContext.fillText("LOW LOW", 616, 506);
+    screenContext.fillStyle = "rgba(221, 213, 201, .84)";
+    screenContext.font = "600 62px Inter, Segoe UI, Arial, sans-serif";
+    screenContext.fillText("OHNE ANSAGE", 624, 654);
+
+    if (radioCoverReady) {
+      const artX = 152;
+      const artY = 326;
+      const artSize = 398;
+      screenContext.save();
+      roundedCanvasRect(screenContext, artX, artY, artSize, artSize, 28);
+      screenContext.clip();
+      screenContext.drawImage(radioCover, artX, artY, artSize, artSize);
+      screenContext.restore();
+      screenContext.strokeStyle = "rgba(255, 238, 213, .42)";
+      screenContext.lineWidth = 3;
+      roundedCanvasRect(screenContext, artX, artY, artSize, artSize, 28);
+      screenContext.stroke();
+    }
   }
   drawRadioScreen();
+  radioCover.addEventListener("load", () => {
+    radioCoverReady = true;
+    drawRadioScreen();
+    screenTexture.needsUpdate = true;
+  });
+  radioCover.src = "assets/images/icon-low-low.png";
   screenTexture.needsUpdate = true;
   const screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false });
   const screenFace = addMesh(new THREE.PlaneGeometry(2.40, 1.42), screenMaterial, radio, [0, 0.16, 0.382]);
@@ -582,8 +610,10 @@ function createWorld(THREE) {
   waveformTexture.minFilter = THREE.LinearFilter;
   waveformTexture.magFilter = THREE.LinearFilter;
   const waveformMaterial = new THREE.MeshBasicMaterial({ map: waveformTexture, transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
-  const waveform = addMesh(new THREE.PlaneGeometry(2.04, 0.23), waveformMaterial, radio, [0, -0.19, 0.416]);
+  const waveform = new THREE.Mesh(new THREE.PlaneGeometry(2.08, 0.18), waveformMaterial);
+  waveform.position.set(0, -0.19, 0.014);
   waveform.renderOrder = 5;
+  screenFace.add(waveform);
 
   // Slim air vents and a pair of premium climate knobs frame the touchscreen.
   const ventCasing = mat(0x101114, 0.62, 0.2);
@@ -666,8 +696,10 @@ function createWorld(THREE) {
   const cameraKeys = [
     { p: 0, position: [-0.25, 2.4, 7.0], target: [-0.2, 1.55, -3.8], fov: 47, mobile: { position: [-0.12, 2.3, 6.0], target: [-0.1, 1.45, -3.8], fov: 56 } },
     { p: 0.18, position: [-0.15, 2.15, 5.4], target: [0, 1.48, -5.25], fov: 48, mobile: { position: [-0.12, 2.18, 5.4], target: [-0.08, 1.52, -4.7], fov: 56 } },
-    { p: 0.34, position: [0, 1.76, 4.45], target: [0, 1.5, -2.86], fov: 46, mobile: { position: [0.12, 1.76, 5.0], fov: 60 } },
-    { p: 0.49, position: [0, 1.66, 2.0], target: [0, 1.54, -2.86], fov: 35, mobile: { position: [0.08, 1.66, 4.5], fov: 58 } },
+    { p: 0.34, position: [0, 1.76, 5.06], target: [0, 1.56, -2.04], fov: 46, mobile: { position: [0.12, 1.76, 5.61], target: [0.04, 1.56, -2.04], fov: 60 } },
+    { p: 0.49, position: [0, 1.66, 2.61], target: [0, 1.56, -2.04], fov: 35, mobile: { position: [0.08, 1.66, 5.11], target: [0.02, 1.56, -2.04], fov: 58 } },
+    { p: 0.55, position: [0, 1.58, 1.06], target: [0, 1.56, -2.04], fov: 35, mobile: { position: [0.02, 1.58, 3.01], target: [0.02, 1.56, -2.04], fov: 62 } },
+    { p: 0.58, position: [0, 1.56, -0.59], target: [0, 1.56, -2.04], fov: 38, mobile: { position: [0.02, 1.56, 0.46], target: [0.02, 1.56, -2.04], fov: 69 } },
     { p: 0.62, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.75, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.87, position: [0, 1.55, -13.6], target: [0, 1.55, -17.3], fov: 40 },
@@ -734,7 +766,7 @@ function createWorld(THREE) {
   function updateWave(time) {
     if (analyser && frequencyData) analyser.getByteFrequencyData(frequencyData);
     const p = exactProgress;
-    waveform.visible = p > 0.27 && p < 0.72;
+    waveform.visible = p > 0.27 && p < 0.62;
     if (!waveform.visible) return;
     const playing = audio && !audio.paused && !audio.ended;
     if (reducedMotion.matches && lastWaveUpdate >= 0) return;
@@ -833,7 +865,7 @@ function createWorld(THREE) {
     if (smoothProgress < 0.64) scene.background.copy(nightColor).lerp(redColor, THREE.MathUtils.smoothstep(smoothProgress, 0.28, 0.64));
     else scene.background.copy(redColor).lerp(goldColor, THREE.MathUtils.smoothstep(smoothProgress, 0.64, 0.89));
     scene.fog.color.copy(scene.background);
-    const radioReveal = THREE.MathUtils.smoothstep(smoothProgress, 0.25, 0.43) * (1 - THREE.MathUtils.smoothstep(smoothProgress, 0.64, 0.73));
+    const radioReveal = THREE.MathUtils.smoothstep(smoothProgress, 0.25, 0.43) * (1 - THREE.MathUtils.smoothstep(smoothProgress, 0.58, 0.62));
     dashGlow.intensity = 0.38 + radioReveal * 1.35;
     radioKey.intensity = radioReveal * 7.5;
     radioFill.intensity = radioReveal * 4.2;
