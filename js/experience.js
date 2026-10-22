@@ -406,8 +406,6 @@ function createWorld(THREE) {
     addMesh(new THREE.BoxGeometry(0.34, 0.035, 0.28), brushed, cabin, [side * 4.01, 1.04, -2.04], [0, side * -0.08, 0]);
     addMesh(new THREE.BoxGeometry(0.045, 0.035, 0.12), mat(0xd4c7b2, 0.23, 0.72), cabin, [side * 3.96, 1.03, -2.02]);
   }
-  const stack = addMesh(new THREE.BoxGeometry(2.28, 1.78, 0.5), soft, cabin, [0, 1.46, -2.60]);
-  stack.rotation.x = -0.055;
   addMesh(new THREE.BoxGeometry(2.7, 0.7, 0.72), leather, cabin, [2.75, 0.96, -3.18]);
   addMesh(new THREE.BoxGeometry(0.92, 0.035, 0.045), brushed, cabin, [2.72, 1.0, -2.81]);
   addMesh(new THREE.BoxGeometry(2.6, 0.18, 0.38), soft, cabin, [-3.08, 1.79, -2.72]);
@@ -492,9 +490,9 @@ function createWorld(THREE) {
 
   const radio = new THREE.Group();
   radio.name = "center-stack-radio";
-  radio.position.set(0, 1.46, -2.25);
-  radio.rotation.x = -0.045;
-  radio.scale.set(0.48, 0.56, 0.56);
+  radio.position.set(0, 0.96, -2.23);
+  radio.rotation.x = -0.025;
+  radio.scale.set(0.40, 0.42, 0.56);
   cabin.add(radio);
   function roundedRect(width, height, radius) {
     const x = width / 2;
@@ -524,13 +522,11 @@ function createWorld(THREE) {
     geometry.translate(0, 0, -depth / 2);
     return addMesh(geometry, material, radio, position);
   }
-  addRoundedPanel(3.06, 2.62, 0.27, 0.42, 0.07, mat(0x55585d, 0.3, 0.62), [0, 0, 0]);
-  addRoundedPanel(2.94, 2.50, 0.24, 0.075, 0.022, mat(0x15161a, 0.48, 0.24), [0, 0, 0.215]);
-  addRoundedPanel(2.84, 2.40, 0.22, 0.035, 0.01, mat(0x242529, 0.54, 0.2), [0, 0, 0.268]);
-
-  // A wide, flush touchscreen gives the center stack a modern integrated silhouette.
-  addRoundedPanel(2.54, 1.56, 0.12, 0.105, 0.035, mat(0x666a70, 0.24, 0.66), [0, 0.16, 0.275]);
-  addRoundedPanel(2.40, 1.42, 0.09, 0.035, 0.012, mat(0x080a0d, 0.2, 0.08, { emissive: 0x0b1015, emissiveIntensity: 0.62 }), [0, 0.16, 0.338]);
+  // A compact, flush glass display sits directly in the dashboard; no separate backing plate.
+  const radioHousing = mat(0x16181c, 0.42, 0.12);
+  const radioGlassEdge = mat(0x05070a, 0.18, 0.1, { emissive: 0x090d12, emissiveIntensity: 0.28 });
+  addRoundedPanel(2.58, 1.62, 0.14, 0.12, 0.025, radioHousing, [0, 0, 0.025]);
+  addRoundedPanel(2.48, 1.50, 0.12, 0.018, 0.006, radioGlassEdge, [0, 0, 0.084]);
   const screenCanvas = document.createElement("canvas");
   screenCanvas.width = 2048;
   screenCanvas.height = 1212;
@@ -598,7 +594,7 @@ function createWorld(THREE) {
   radioCover.src = "assets/images/icon-low-low.png";
   screenTexture.needsUpdate = true;
   const screenMaterial = new THREE.MeshBasicMaterial({ map: screenTexture, toneMapped: false });
-  const screenFace = addMesh(new THREE.PlaneGeometry(2.40, 1.42), screenMaterial, radio, [0, 0.16, 0.382]);
+  const screenFace = addMesh(new THREE.PlaneGeometry(2.40, 1.42), screenMaterial, radio, [0, 0, 0.135]);
   screenFace.renderOrder = 3;
   const waveformCanvas = document.createElement("canvas");
   waveformCanvas.width = 1536;
@@ -614,32 +610,6 @@ function createWorld(THREE) {
   waveform.position.set(0, -0.19, 0.014);
   waveform.renderOrder = 5;
   screenFace.add(waveform);
-
-  // Slim air vents and a pair of premium climate knobs frame the touchscreen.
-  const ventCasing = mat(0x101114, 0.62, 0.2);
-  addRoundedPanel(2.16, 0.19, 0.06, 0.055, 0.012, ventCasing, [0, 1.08, 0.3]);
-  for (let i = 0; i < 5; i += 1) {
-    addMesh(new THREE.BoxGeometry(1.82, 0.012, 0.024), mat(0x8c8579, 0.38, 0.48), radio, [0, 1.02 + i * 0.026, 0.342]);
-  }
-  const knobMetal = mat(0xb1a18a, 0.23, 0.64);
-  for (const x of [-0.9, 0.9]) {
-    addMesh(new THREE.CylinderGeometry(0.11, 0.12, 0.13, 40), mat(0x25262a, 0.28, 0.55), radio, [x, -0.91, 0.34], [Math.PI / 2, 0, 0]);
-    const ring = addMesh(new THREE.TorusGeometry(0.096, 0.012, 8, 40), knobMetal, radio, [x, -0.91, 0.414]);
-    ring.renderOrder = 2;
-    addMesh(new THREE.BoxGeometry(0.012, 0.034, 0.012), mat(0xf0c37b, 0.25, 0.3, { emissive: 0x513419, emissiveIntensity: 0.4 }), radio, [x, -0.86, 0.417]);
-  }
-  for (let i = 0; i < 3; i += 1) {
-    const x = -0.22 + i * 0.22;
-    addRoundedPanel(0.14, 0.07, 0.022, 0.04, 0.008, mat(0x28292d, 0.3, 0.56), [x, -0.91, 0.3]);
-    addMesh(new THREE.BoxGeometry(0.024, 0.01, 0.012), mat(i === 1 ? 0xe6b97c : 0x9b9a9b, 0.25, 0.45, { emissive: i === 1 ? 0x5b3214 : 0x151515, emissiveIntensity: 0.25 }), radio, [x, -0.91, 0.33]);
-  }
-  const hazardShape = new THREE.Shape();
-  hazardShape.moveTo(0, 0.065);
-  hazardShape.lineTo(0.064, -0.05);
-  hazardShape.lineTo(-0.064, -0.05);
-  hazardShape.closePath();
-  const hazard = addMesh(new THREE.ShapeGeometry(hazardShape), new THREE.MeshBasicMaterial({ color: palette.red, toneMapped: false }), radio, [0, -1.02, 0.30]);
-  hazard.renderOrder = 2;
 
   // The album cover is a second, warm-lit object in the same continuous world.
   const textureLoader = new THREE.TextureLoader();
@@ -696,10 +666,10 @@ function createWorld(THREE) {
   const cameraKeys = [
     { p: 0, position: [-0.25, 2.4, 7.0], target: [-0.2, 1.55, -3.8], fov: 47, mobile: { position: [-0.12, 2.3, 6.0], target: [-0.1, 1.45, -3.8], fov: 56 } },
     { p: 0.18, position: [-0.15, 2.15, 5.4], target: [0, 1.48, -5.25], fov: 48, mobile: { position: [-0.12, 2.18, 5.4], target: [-0.08, 1.52, -4.7], fov: 56 } },
-    { p: 0.34, position: [0, 1.76, 5.06], target: [0, 1.56, -2.04], fov: 46, mobile: { position: [0.12, 1.76, 5.61], target: [0.04, 1.56, -2.04], fov: 60 } },
-    { p: 0.49, position: [0, 1.66, 2.61], target: [0, 1.56, -2.04], fov: 35, mobile: { position: [0.08, 1.66, 5.11], target: [0.02, 1.56, -2.04], fov: 58 } },
-    { p: 0.55, position: [0, 1.58, 1.06], target: [0, 1.56, -2.04], fov: 35, mobile: { position: [0.02, 1.58, 3.01], target: [0.02, 1.56, -2.04], fov: 62 } },
-    { p: 0.58, position: [0, 1.56, -0.59], target: [0, 1.56, -2.04], fov: 38, mobile: { position: [0.02, 1.56, 0.46], target: [0.02, 1.56, -2.04], fov: 69 } },
+    { p: 0.34, position: [0, 1.76, 5.06], target: [0, 0.96, -2.15], fov: 46, mobile: { position: [0.12, 1.62, 5.61], target: [0.04, 0.96, -2.15], fov: 60 } },
+    { p: 0.49, position: [0, 1.42, 2.61], target: [0, 0.96, -2.15], fov: 35, mobile: { position: [0.08, 1.34, 4.0], target: [0.02, 0.96, -2.15], fov: 56 } },
+    { p: 0.55, position: [0, 1.12, 1.06], target: [0, 0.96, -2.15], fov: 35, mobile: { position: [0.02, 1.02, 1.65], target: [0.02, 0.96, -2.15], fov: 56 } },
+    { p: 0.58, position: [0, 0.98, -0.55], target: [0, 0.96, -2.15], fov: 40, mobile: { position: [0.02, 0.98, 0.55], target: [0.02, 0.96, -2.15], fov: 56 } },
     { p: 0.62, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.75, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.87, position: [0, 1.55, -13.6], target: [0, 1.55, -17.3], fov: 40 },
@@ -750,7 +720,14 @@ function createWorld(THREE) {
       THREE.MathUtils.lerp(targetLeft[1], targetRight[1], eased),
       THREE.MathUtils.lerp(targetLeft[2], targetRight[2], eased)
     );
-    camera.fov = THREE.MathUtils.lerp(mobileLeft.fov ?? left.fov, mobileRight.fov ?? right.fov, eased);
+    const authoredFov = THREE.MathUtils.lerp(mobileLeft.fov ?? left.fov, mobileRight.fov ?? right.fov, eased);
+    const referencePhoneAspect = 390 / 844;
+    const narrowPhoneFov = 2 * Math.atan(
+      Math.tan(THREE.MathUtils.degToRad(authoredFov) / 2) * referencePhoneAspect / camera.aspect
+    );
+    camera.fov = mobile.matches && camera.aspect < referencePhoneAspect
+      ? Math.min(70, THREE.MathUtils.radToDeg(narrowPhoneFov))
+      : authoredFov;
     camera.updateProjectionMatrix();
   }
   function resize() {

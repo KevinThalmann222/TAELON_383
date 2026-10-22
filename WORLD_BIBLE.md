@@ -33,9 +33,9 @@
 | Album gold | `#E7BB78` | OHNE ANSAGE scene and confirmed status |
 | Readable ivory | `#F3EEE5` | headings, controls, story copy |
 
-- Scene proportions: relative units, not a claim of manufacturer dimensions. The steering wheel's outer diameter is 1.24 units; the active display spans 1.15 units, just under the wheel diameter.
-- Lens: perspective camera with a mobile-authored portrait composition; no artificial camera roll.
-- Materials: dark rough leather and road; brushed metal console; lightly tinted windshield glass; emissive display, lamps, and radio bars.
+- Scene proportions: relative units, not a claim of manufacturer dimensions. The steering wheel's outer diameter is 1.24 units; the active display spans 0.96 units (about 77% of the wheel diameter), with a low-profile dark graphite housing integrated into the dashboard.
+- Lens: perspective camera with a mobile-authored portrait composition; narrow phones widen the vertical field to preserve the display's horizontal framing, with no artificial camera roll.
+- Materials: dark rough leather and road; restrained satin trim; lightly tinted windshield glass; flush black-glass media display, lamps, and a fine audio-reactive waveform. The center display has no separate backing plate, chrome bezel, knobs, or grille bars.
 - Motion grammar: slow forward glide, gradual camera dive, short radio hold, warm reveal of the album, quiet CTA landing.
 - No photorealistic people, random music-video scenes, excessive particles, external fonts, or unverified campaign claims.
 
@@ -84,8 +84,9 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 ## QA status — 22 October 2026
 
 - Playwright Chromium with software WebGL rendered at 320×844, 390×844, 768×1024, 1024×800, and 1440×900. Each document's scroll width matched its viewport; WebGL initialized, the supplied thumbnail returned HTTP 200, and there were no JavaScript errors or failed local requests.
-- On mobile and desktop, the radio camera reached the display with the chapter copy faded out. The phone view was also checked at the close-up and album beats. The center display is 1.15 scene units wide versus a 1.24-unit steering wheel diameter; the gauges stay to the left of the display.
+- The revised radio was visually reviewed at 320×844, 390×844, and 1440×900. At the close-up beat, the 0.96-unit display is about 77% of the 1.24-unit steering-wheel diameter, sits in the dashboard without the former backing slab, and stays fully framed on narrow phones. The gauges remain left of the center display.
+- A final Playwright pass at 320×844, 390×844, 768×1024, 1024×800, and 1440×900 found no horizontal overflow, browser errors, failed local requests, or WebGL fallback. The radio chapter focused correctly, its copy faded away, and the supplied thumbnail returned HTTP 200.
 - The WAV header contains 5,760,000 bytes at 192,000 bytes per second, an exact 30-second PCM excerpt. Chromium plays it to 29.994667 seconds; the visible and accessible player display rounds the completed excerpt to `00:30 / 00:30`. Playback continued during scroll, and pause and stop both worked.
-- A playing-state screenshot confirmed the waveform animates with the audio. Album artwork loaded at 1254×1254. Reduced-motion emulation rendered without errors; the first keyboard Tab reaches the skip link.
+- The latest audio regression check confirmed playback continues during scrolling and pause/stop both work. Earlier full-duration verification reached 29.994667 seconds and displayed `00:30 / 00:30`. A playing-state screenshot confirmed the waveform animates with the audio. Album artwork loaded at 1254×1254. Reduced-motion emulation rendered without errors; the first keyboard Tab reaches the skip link.
 - With WebGL disabled, the readable HTML story remained available, the canvas hid, and the narrow view had no horizontal overflow.
 - These checks ran in desktop Chromium with software WebGL. A real phone, mobile-browser frame rate, 200% browser zoom, and iOS/Android rendering still need device testing before publication. The site has not been pushed or deployed from this review.
