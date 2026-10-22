@@ -374,14 +374,136 @@ function createWorld(THREE) {
   addMesh(new THREE.BoxGeometry(1.8, 0.012, 0.012), seam, cabin, [2.62, 0.5, -2.245]);
   const cabinFloor = addMesh(new THREE.PlaneGeometry(8.2, 7.0), mat(0x151619, 0.9, 0.02), cabin, [0, -0.55, -1.0], [-Math.PI / 2, 0, 0]);
   cabinFloor.material.side = THREE.DoubleSide;
-  addMesh(new THREE.BoxGeometry(1.9, 0.62, 3.8), mat(0x28272b, 0.58, 0.045), cabin, [0, 0.05, -0.5]);
-  addMesh(new THREE.BoxGeometry(1.62, 0.045, 3.52), mat(0x353237, 0.52, 0.055), cabin, [0, 0.385, -0.5]);
-  const tunnelTrim = mat(0x756b5b, 0.32, 0.64);
-  for (const side of [-1, 1]) {
-    addMesh(new THREE.BoxGeometry(0.035, 0.018, 3.12), tunnelTrim, cabin, [side * 0.79, 0.418, -0.48]);
+  // Sculpted, tapered center tunnel with a real top plane, satin edge rails, and a padded armrest.
+  const centerConsole = new THREE.Group();
+  centerConsole.name = "sculpted center console";
+  centerConsole.rotation.x = 0.08;
+  cabin.add(centerConsole);
+  function consoleFootprint(nearWidth, farWidth, length, corner = 0.14) {
+    const shape = new THREE.Shape();
+    shape.moveTo(-nearWidth + corner, 0);
+    shape.lineTo(nearWidth - corner, 0);
+    shape.quadraticCurveTo(nearWidth, 0, nearWidth, corner);
+    shape.lineTo(farWidth, length - corner);
+    shape.quadraticCurveTo(farWidth, length, farWidth - corner, length);
+    shape.lineTo(-farWidth + corner, length);
+    shape.quadraticCurveTo(-farWidth, length, -farWidth, length - corner);
+    shape.lineTo(-nearWidth, corner);
+    shape.quadraticCurveTo(-nearWidth, 0, -nearWidth + corner, 0);
+    shape.closePath();
+    return shape;
   }
-  addMesh(new THREE.BoxGeometry(1.36, 0.16, 0.88), leather, cabin, [0, 0.49, 1.12]);
-  addMesh(new THREE.BoxGeometry(1.14, 0.025, 0.7), dashLeather, cabin, [0, 0.582, 1.1]);
+  function addConsoleVolume(shape, depth, material, position, bevel = 0.04) {
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth,
+      bevelEnabled: bevel > 0,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 5,
+      curveSegments: 12
+    });
+    geometry.translate(0, 0, -depth / 2);
+    geometry.rotateX(-Math.PI / 2);
+    return addMesh(geometry, material, centerConsole, position);
+  }
+  function addConsoleSurface(shape, material, position) {
+    const geometry = new THREE.ShapeGeometry(shape, 16);
+    geometry.rotateX(-Math.PI / 2);
+    return addMesh(geometry, material, centerConsole, position);
+  }
+  function addConsoleRail(points, material, radius) {
+    const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+    const rail = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, radius, 8, false), material);
+    centerConsole.add(rail);
+    return rail;
+  }
+  const tunnelShape = consoleFootprint(0.5, 0.68, 2.92, 0.15);
+  addConsoleVolume(tunnelShape, 0.9, leather, [0, -0.02, 1.1], 0.07);
+  addConsoleSurface(tunnelShape, leather, [0, 0.435, 1.1]);
+  const inlayShape = consoleFootprint(0.32, 0.4, 2.36, 0.11);
+  addConsoleSurface(inlayShape, mat(0x0d1015, 0.46, 0.2), [0, 0.441, 0.79]);
+  const satinRail = mat(0x8c8275, 0.32, 0.44);
+  const railPoints = [
+    [-0.44, 0.448, 0.98], [-0.51, 0.448, 0.48], [-0.57, 0.448, -0.25], [-0.61, 0.448, -0.9], [-0.6, 0.448, -1.38], [-0.53, 0.448, -1.62]
+  ];
+  addConsoleRail(railPoints, satinRail, 0.016);
+  addConsoleRail(railPoints.map(([x, y, z]) => [-x, y, z]), satinRail, 0.016);
+
+  // Softly rounded leather armrest sits at the rear of the tunnel, with a fine stitched edge.
+  const armrestShape = consoleFootprint(0.42, 0.42, 0.82, 0.14);
+  addConsoleVolume(armrestShape, 0.17, leather, [0, 0.49, 1.26], 0.055);
+  addConsoleSurface(armrestShape, dashLeather, [0, 0.578, 1.26]);
+  const armrestSeam = mat(0x716a63, 0.9, 0.02);
+  addConsoleRail([[-0.31, 0.579, 1.12], [-0.32, 0.579, 0.9], [-0.32, 0.579, 0.66], [-0.26, 0.579, 0.54]], armrestSeam, 0.0035);
+  addConsoleRail([[0.31, 0.579, 1.12], [0.32, 0.579, 0.9], [0.32, 0.579, 0.66], [0.26, 0.579, 0.54]], armrestSeam, 0.0035);
+
+  // Recessed cupholders and a short electronic selector make the tunnel read as a usable console.
+  const cupholderMetal = new THREE.MeshBasicMaterial({ color: 0x9a9082, toneMapped: false });
+  const cupholderInset = mat(0x0c0d10, 0.82, 0.08);
+  for (const x of [-0.24, 0.24]) {
+    addMesh(new THREE.CylinderGeometry(0.108, 0.096, 0.07, 40, 1, true), mat(0x29282b, 0.5, 0.34), centerConsole, [x, 0.49, 0.15]);
+    addMesh(new THREE.CylinderGeometry(0.094, 0.084, 0.012, 40), cupholderInset, centerConsole, [x, 0.463, 0.15]);
+    addMesh(new THREE.TorusGeometry(0.108, 0.011, 8, 40), cupholderMetal, centerConsole, [x, 0.53, 0.15], [-Math.PI / 2, 0, 0]);
+    addMesh(new THREE.TorusGeometry(0.079, 0.0045, 6, 32), mat(0x45434a, 0.42, 0.3), centerConsole, [x, 0.469, 0.15], [-Math.PI / 2, 0, 0]);
+  }
+  const selectorBase = consoleFootprint(0.22, 0.2, 0.48, 0.085);
+  addConsoleVolume(selectorBase, 0.045, mat(0x494640, 0.34, 0.62), [0, 0.47, -0.18], 0.018);
+  addConsoleSurface(selectorBase, mat(0x101216, 0.3, 0.34), [0, 0.495, -0.18]);
+  const selector = new THREE.Group();
+  selector.position.set(0, 0.49, -0.42);
+  selector.rotation.z = -0.05;
+  centerConsole.add(selector);
+  const selectorShape = new THREE.Shape();
+  selectorShape.moveTo(-0.105, 0.015);
+  selectorShape.lineTo(0.105, 0.015);
+  selectorShape.quadraticCurveTo(0.12, 0.03, 0.105, 0.075);
+  selectorShape.lineTo(0.078, 0.145);
+  selectorShape.quadraticCurveTo(0.07, 0.185, 0.04, 0.2);
+  selectorShape.lineTo(-0.04, 0.2);
+  selectorShape.quadraticCurveTo(-0.07, 0.185, -0.078, 0.145);
+  selectorShape.lineTo(-0.105, 0.075);
+  selectorShape.quadraticCurveTo(-0.12, 0.03, -0.105, 0.015);
+  selectorShape.closePath();
+  const selectorGeometry = new THREE.ExtrudeGeometry(selectorShape, {
+    depth: 0.16, bevelEnabled: true, bevelThickness: 0.024, bevelSize: 0.018, bevelSegments: 5, curveSegments: 12
+  });
+  selectorGeometry.translate(0, 0, -0.08);
+  addMesh(selectorGeometry, mat(0x36353a, 0.3, 0.46), selector, [0, 0, 0]);
+  for (const side of [-1, 1]) {
+    addMesh(new THREE.BoxGeometry(0.012, 0.115, 0.012), satinRail, selector, [side * 0.09, 0.115, 0.078]);
+  }
+  const selectorCapShape = consoleFootprint(0.068, 0.068, 0.12, 0.035);
+  addConsoleSurface(selectorCapShape, mat(0x131519, 0.24, 0.38), [0, 0.693, -0.36]);
+  addMesh(new THREE.BoxGeometry(0.04, 0.008, 0.012), mat(0xe3b47b, 0.26, 0.42, { emissive: 0x57351b, emissiveIntensity: 0.28 }), selector, [0, 0.189, 0.073]);
+  const gearCanvas = document.createElement("canvas");
+  gearCanvas.width = 512;
+  gearCanvas.height = 96;
+  const gearContext = gearCanvas.getContext("2d");
+  gearContext.fillStyle = "#111419";
+  gearContext.fillRect(0, 0, gearCanvas.width, gearCanvas.height);
+  gearContext.textAlign = "center";
+  gearContext.textBaseline = "middle";
+  gearContext.font = "700 58px Inter, Segoe UI, Arial, sans-serif";
+  for (const [label, x] of [["P", 54], ["R", 188], ["N", 322], ["D", 456]]) {
+    gearContext.fillStyle = label === "P" ? "#f0c080" : "#b6b4b1";
+    gearContext.fillText(label, x, 49);
+  }
+  const gearTexture = new THREE.CanvasTexture(gearCanvas);
+  gearTexture.colorSpace = THREE.SRGBColorSpace;
+  gearTexture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+  const gearDisplay = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.078), new THREE.MeshBasicMaterial({ map: gearTexture, toneMapped: false }));
+  gearDisplay.rotation.x = -Math.PI / 2;
+  gearDisplay.position.set(0, 0.505, -0.18);
+  centerConsole.add(gearDisplay);
+
+  // A restrained glass touch surface and two metal keys fill the otherwise open forward section.
+  const touchSurface = consoleFootprint(0.19, 0.19, 0.48, 0.075);
+  addConsoleVolume(touchSurface, 0.035, mat(0x514c45, 0.32, 0.58), [0, 0.462, -0.82], 0.014);
+  addConsoleSurface(touchSurface, mat(0x111419, 0.24, 0.38), [0, 0.482, -0.82]);
+  const touchKey = new THREE.MeshBasicMaterial({ color: 0x847969, toneMapped: false });
+  for (const x of [-0.075, 0.075]) {
+    addMesh(new THREE.BoxGeometry(0.075, 0.009, 0.028), touchKey, centerConsole, [x, 0.492, -1.18]);
+  }
   // Brushed pedals and a ribbed footwell mat finish the lower cabin foreground.
   const footwellMat = addMesh(new THREE.PlaneGeometry(1.55, 1.95), mat(0x1b1a1d, 0.86, 0.05), cabin, [-1.12, -0.51, 0.85], [-Math.PI / 2, 0, 0]);
   footwellMat.material.side = THREE.DoubleSide;
@@ -443,40 +565,6 @@ function createWorld(THREE) {
     addMesh(new THREE.BoxGeometry(0.22, 0.11, 0.035), mat(0x222328, 0.55, 0.18), cabin, [wheelX + side * 0.39, 1.25, -1.89]);
     addMesh(new THREE.BoxGeometry(0.09, 0.025, 0.012), mat(0xc49a6a, 0.32, 0.4, { emissive: 0x3c2110, emissiveIntensity: 0.24 }), cabin, [wheelX + side * 0.39, 1.25, -1.867]);
   }
-  // Compact electronic selector: leather grip, satin-metal spine, and illuminated gear key.
-  addMesh(new THREE.BoxGeometry(1.08, 0.1, 0.74), mat(0x17181c, 0.46, 0.18), cabin, [0.68, 0.45, 0.18]);
-  addMesh(new THREE.BoxGeometry(0.94, 0.035, 0.61), brushed, cabin, [0.68, 0.514, 0.18]);
-  const cupholderMetal = mat(0xa2937d, 0.26, 0.68);
-  for (const x of [-0.38, 0.38]) {
-    addMesh(new THREE.CylinderGeometry(0.13, 0.13, 0.026, 32), mat(0x0d0e11, 0.68, 0.2), cabin, [0.68 + x, 0.423, 0.92]);
-    addMesh(new THREE.TorusGeometry(0.13, 0.012, 8, 32), cupholderMetal, cabin, [0.68 + x, 0.44, 0.92], [Math.PI / 2, 0, 0]);
-  }
-  const selector = new THREE.Group();
-  selector.position.set(0.7, 0.52, 0.2);
-  selector.rotation.z = -0.06;
-  cabin.add(selector);
-  const selectorShape = new THREE.Shape();
-  selectorShape.moveTo(-0.27, 0.03);
-  selectorShape.lineTo(0.27, 0.03);
-  selectorShape.lineTo(0.22, 0.33);
-  selectorShape.quadraticCurveTo(0.2, 0.4, 0.16, 0.48);
-  selectorShape.lineTo(-0.16, 0.48);
-  selectorShape.quadraticCurveTo(-0.2, 0.4, -0.22, 0.33);
-  selectorShape.closePath();
-  const selectorGeometry = new THREE.ExtrudeGeometry(selectorShape, { depth: 0.36, bevelEnabled: true, bevelThickness: 0.045, bevelSize: 0.035, bevelSegments: 4, curveSegments: 12 });
-  selectorGeometry.translate(0, 0, -0.18);
-  addMesh(selectorGeometry, mat(0x29282a, 0.38, 0.3), selector, [0, 0, 0]);
-  addMesh(new THREE.BoxGeometry(0.28, 0.028, 0.27), mat(0x1a1b1f, 0.26, 0.42), selector, [0, 0.47, 0]);
-  addMesh(new THREE.BoxGeometry(0.23, 0.014, 0.018), mat(0xd4c6ac, 0.22, 0.72), selector, [0, 0.47, 0.145]);
-  addMesh(new THREE.BoxGeometry(0.11, 0.012, 0.014), mat(0xe8b878, 0.28, 0.48, { emissive: 0x593416, emissiveIntensity: 0.35 }), selector, [0, 0.47, 0.158]);
-  addMesh(new THREE.BoxGeometry(0.018, 0.26, 0.02), mat(0xaaa093, 0.29, 0.72), selector, [-0.215, 0.25, 0.17]);
-  addMesh(new THREE.BoxGeometry(0.015, 0.24, 0.016), mat(0x8b8175, 0.34, 0.64), selector, [0.215, 0.25, 0.17]);
-  for (let rib = 0; rib < 3; rib += 1) {
-    addMesh(new THREE.BoxGeometry(0.09, 0.012, 0.012), mat(0x8d8172, 0.34, 0.55), selector, [0.1, 0.16 + rib * 0.055, 0.185]);
-  }
-  addMesh(new THREE.BoxGeometry(0.37, 0.026, 0.035), mat(0x7b7265, 0.32, 0.62), selector, [0, 0.02, 0.19]);
-  selector.scale.set(0.84, 0.9, 0.88);
-
   // Small mirror and wipers make the windshield read as glass from the driver's seat.
   addMesh(new THREE.BoxGeometry(0.78, 0.11, 0.18), brushed, cabin, [0, 4.03, -3.94]);
   addMesh(new THREE.BoxGeometry(0.07, 0.34, 0.09), soft, cabin, [0, 3.85, -4.0]);
@@ -528,11 +616,16 @@ function createWorld(THREE) {
   addRoundedPanel(2.58, 1.62, 0.14, 0.12, 0.025, radioHousing, [0, 0, 0.025]);
   addRoundedPanel(2.48, 1.50, 0.12, 0.018, 0.006, radioGlassEdge, [0, 0, 0.084]);
   const screenCanvas = document.createElement("canvas");
-  screenCanvas.width = 2048;
-  screenCanvas.height = 1212;
+  const screenScale = Math.min(1.5, renderer.capabilities.maxTextureSize / 2048);
+  screenCanvas.width = Math.round(2048 * screenScale);
+  screenCanvas.height = Math.round(1212 * screenScale);
   const screenContext = screenCanvas.getContext("2d");
+  screenContext.scale(screenScale, screenScale);
+  screenContext.imageSmoothingEnabled = true;
+  screenContext.imageSmoothingQuality = "high";
   const screenTexture = new THREE.CanvasTexture(screenCanvas);
   screenTexture.colorSpace = THREE.SRGBColorSpace;
+  screenTexture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   let radioCoverReady = false;
   const radioCover = new Image();
   function roundedCanvasRect(context, x, y, width, height, radius) {
@@ -571,17 +664,18 @@ function createWorld(THREE) {
     screenContext.fillText("OHNE ANSAGE", 624, 654);
 
     if (radioCoverReady) {
-      const artX = 152;
-      const artY = 326;
-      const artSize = 398;
+      const artX = 148;
+      const artY = 318;
+      const artWidth = 446;
+      const artHeight = 472;
       screenContext.save();
-      roundedCanvasRect(screenContext, artX, artY, artSize, artSize, 28);
+      roundedCanvasRect(screenContext, artX, artY, artWidth, artHeight, 28);
       screenContext.clip();
-      screenContext.drawImage(radioCover, artX, artY, artSize, artSize);
+      screenContext.drawImage(radioCover, artX, artY, artWidth, artHeight);
       screenContext.restore();
       screenContext.strokeStyle = "rgba(255, 238, 213, .42)";
       screenContext.lineWidth = 3;
-      roundedCanvasRect(screenContext, artX, artY, artSize, artSize, 28);
+      roundedCanvasRect(screenContext, artX, artY, artWidth, artHeight, 28);
       screenContext.stroke();
     }
   }
@@ -667,8 +761,8 @@ function createWorld(THREE) {
     { p: 0, position: [-0.25, 2.4, 7.0], target: [-0.2, 1.55, -3.8], fov: 47, mobile: { position: [-0.12, 2.3, 6.0], target: [-0.1, 1.45, -3.8], fov: 56 } },
     { p: 0.18, position: [-0.15, 2.15, 5.4], target: [0, 1.48, -5.25], fov: 48, mobile: { position: [-0.12, 2.18, 5.4], target: [-0.08, 1.52, -4.7], fov: 56 } },
     { p: 0.34, position: [0, 1.76, 5.06], target: [0, 0.96, -2.15], fov: 46, mobile: { position: [0.12, 1.62, 5.61], target: [0.04, 0.96, -2.15], fov: 60 } },
-    { p: 0.49, position: [0, 1.42, 2.61], target: [0, 0.96, -2.15], fov: 35, mobile: { position: [0.08, 1.34, 4.0], target: [0.02, 0.96, -2.15], fov: 56 } },
-    { p: 0.55, position: [0, 1.12, 1.06], target: [0, 0.96, -2.15], fov: 35, mobile: { position: [0.02, 1.02, 1.65], target: [0.02, 0.96, -2.15], fov: 56 } },
+    { p: 0.49, position: [0, 1.78, 2.61], target: [0, 0.2, -2.15], fov: 35, mobile: { position: [0.08, 1.72, 4.0], target: [0.02, 0.2, -2.15], fov: 56 } },
+    { p: 0.55, position: [0, 1.48, 1.06], target: [0, 0.4, -2.15], fov: 35, mobile: { position: [0.02, 1.52, 1.65], target: [0.02, 0.4, -2.15], fov: 56 } },
     { p: 0.58, position: [0, 0.98, -0.55], target: [0, 0.96, -2.15], fov: 40, mobile: { position: [0.02, 0.98, 0.55], target: [0.02, 0.96, -2.15], fov: 56 } },
     { p: 0.62, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },
     { p: 0.75, position: [0, 1.62, -9.1], target: [0, 1.55, -16.2], fov: 44 },

@@ -34,8 +34,9 @@
 | Readable ivory | `#F3EEE5` | headings, controls, story copy |
 
 - Scene proportions: relative units, not a claim of manufacturer dimensions. The steering wheel's outer diameter is 1.24 units; the active display spans 0.96 units (about 77% of the wheel diameter), with a low-profile dark graphite housing integrated into the dashboard.
+- The generic center tunnel tapers toward the armrest and carries a padded stitched rest, two recessed metal-edged cupholders, a low electronic selector with a small gear indicator, and a flush touch surface. These authored shapes stay unbranded and are scaled against the wheel and dashboard.
 - Lens: perspective camera with a mobile-authored portrait composition; narrow phones widen the vertical field to preserve the display's horizontal framing, with no artificial camera roll.
-- Materials: dark rough leather and road; restrained satin trim; lightly tinted windshield glass; flush black-glass media display, lamps, and a fine audio-reactive waveform. The center display has no separate backing plate, chrome bezel, knobs, or grille bars.
+- Materials: dark rough leather and road; restrained satin trim; lightly tinted windshield glass; flush black-glass media display, lamps, and a fine audio-reactive waveform. The center display has no separate backing plate, chrome bezel, knobs, or grille bars. The console screen is crisp canvas artwork with the user-supplied LOW LOW thumbnail and only the confirmed artist, track, and album labels; it contains no streaming-service marks.
 - Motion grammar: slow forward glide, gradual camera dive, short radio hold, warm reveal of the album, quiet CTA landing.
 - No photorealistic people, random music-video scenes, excessive particles, external fonts, or unverified campaign claims.
 
@@ -67,7 +68,7 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 | --- | --- | --- |
 | `vendor/three.module.js`, `vendor/three.core.js` | Three.js 0.186.1, local ES modules, MIT | Initial renderer |
 | `assets/audio/low-low-30s.wav` | 00:43–01:13 from project `Low, Low.wav`; PCM 16-bit stereo, 48 kHz | `preload="none"`; only requested after user activation |
-| `assets/images/icon-low-low.png` | User-supplied square LOW LOW artwork, shown as a small rounded thumbnail inside the radio display | Loaded with the 3D experience; no platform logos are present |
+| `assets/images/icon-low-low.png` | User-supplied 893×944 LOW LOW artwork, shown as a rounded thumbnail inside the radio display | Loaded with the 3D experience; kept at its source resolution and drawn into a higher-resolution canvas when the device supports it; no platform logos are present |
 | `assets/images/low-low-cover.png` | Earlier user-provided cover variant, preserved as a project asset | Not displayed in the radio |
 | `assets/ohne-ansage-cover.png` | Existing album cover | Requested near the album chapter |
 | `assets/nachtfahrt.png` | Existing generated night-car mood image | Only used if WebGL cannot start |
@@ -88,5 +89,7 @@ The radio and music timeline are intentionally independent: rapid scrolling neve
 - A final Playwright pass at 320×844, 390×844, 768×1024, 1024×800, and 1440×900 found no horizontal overflow, browser errors, failed local requests, or WebGL fallback. The radio chapter focused correctly, its copy faded away, and the supplied thumbnail returned HTTP 200.
 - The WAV header contains 5,760,000 bytes at 192,000 bytes per second, an exact 30-second PCM excerpt. Chromium plays it to 29.994667 seconds; the visible and accessible player display rounds the completed excerpt to `00:30 / 00:30`. Playback continued during scroll, and pause and stop both worked.
 - The latest audio regression check confirmed playback continues during scrolling and pause/stop both work. Earlier full-duration verification reached 29.994667 seconds and displayed `00:30 / 00:30`. A playing-state screenshot confirmed the waveform animates with the audio. Album artwork loaded at 1254×1254. Reduced-motion emulation rendered without errors; the first keyboard Tab reaches the skip link.
+- The latest cockpit review used software-WebGL Chromium at 390×844 and 1440×900. The canvas initialized with no page or console errors, failed local requests, or horizontal overflow. At 390×844, the integrated display remained unoccluded; the 893×944 artwork and radio text stayed sharp, and both cupholders and the selector were visible in the same cockpit shot. The tested browser reported an 8192-pixel maximum texture size; the display texture scales up only when the device limit supports it.
+- The latest GitHub Pages deployment before this edit completed successfully and the public site returned HTTP 200. A new deployment still needs to be verified after pushing these changes.
 - With WebGL disabled, the readable HTML story remained available, the canvas hid, and the narrow view had no horizontal overflow.
-- These checks ran in desktop Chromium with software WebGL. A real phone, mobile-browser frame rate, 200% browser zoom, and iOS/Android rendering still need device testing before publication. The site has not been pushed or deployed from this review.
+- These checks ran in desktop Chromium with software WebGL. A real phone, mobile-browser frame rate, 200% browser zoom, and iOS/Android rendering still need device testing; the 3D scene is authored stylized geometry rather than a manufacturer-accurate model.

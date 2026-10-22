@@ -17,6 +17,6 @@ Die Seite benötigt einen lokalen HTTP-Server, weil Three.js als ES-Modul und di
 
 ## GitHub Pages
 
-Dieses Repository ist für GitHub Pages direkt aus dem Stammverzeichnis vorbereitet. Nach Freigabe des Entwurfs die letzten lokalen Änderungen auf `master` übernehmen und pushen. Dann in GitHub unter **Settings → Pages → Build and deployment** die Option **Deploy from a branch**, den Branch **master** und **/(root)** wählen und speichern. Die Datei `.nojekyll` verhindert eine Jekyll-Verarbeitung.
+Die statische Website liegt direkt im Repository-Stamm: `index.html`, `js/`, `styles.css`, `assets/` und `.nojekyll`. Die bestehende GitHub-Pages-Seite verwendet den Branch `master`; ein erfolgreicher Pages-Deploy wird in **Actions** unter **GitHub Pages** sichtbar. Die Live-Seite ist [kevinthalmann222.github.io/TAELON_383](https://kevinthalmann222.github.io/TAELON_383/).
 
-Vor einer Veröffentlichung die Seite im Browser prüfen und auf mindestens einem echten Smartphone testen. Erst nach Freigabe veröffentlichen. Bis offizielle Hörlinks vorliegen, verweist der einzige externe Handlungsaufruf auf das bestätigte Instagram-Profil.
+Nach Änderungen an `master` den letzten Pages-Deploy abwarten und die veröffentlichte Live-Seite prüfen. Für eine erneute Einrichtung lautet die Quelle **Deploy from a branch → master → /(root)**. Die Datei `.nojekyll` verhindert eine Jekyll-Verarbeitung. Bis offizielle Hörlinks vorliegen, verweist der einzige externe Handlungsaufruf auf das bestätigte Instagram-Profil.
