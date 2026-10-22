@@ -1,24 +1,22 @@
-# TAELON 383 — OHNE ANSAGE
+# TAELON 383 — Nachtfahrt
 
-Statische, mehrseitige Künstlerseite für das kommende Rap-Album **OHNE ANSAGE**. Die Seite verwendet nur HTML, CSS und lokale Bilder. Es gibt keine erfundenen Veröffentlichungstermine, Tracktitel oder Streaming-Links.
-
-## Seiten
-
-- `index.html`: Einstieg und Albumkampagne
-- `album.html`: Album, Hintergrund, Trackliste und spätere Hörlinks
-- `musik.html`: Veröffentlichungen
-- `kuenstler.html`: Künstlerprofil
-- `aktuelles.html`: Neuigkeiten
-- `kontakt.html`: Kontakt
-
-Neue Inhalte werden direkt in den passenden HTML-Dateien gepflegt. Konkrete Stellen und Beispiele stehen in [INHALTE.md](INHALTE.md).
+Mobil-first, einseitige Scroll-Website für TAELON 383. Eine fortlaufende Three.js-Welt führt vom nächtlichen Cockpit ins Radio, zur Musikszene „LOW LOW“, zum kommenden Album **OHNE ANSAGE** und schließlich zum bestätigten Instagram-Profil.
 
 ## Lokal ansehen
 
-`index.html` direkt im Browser öffnen. Alternativ im Projektordner mit einem lokalen HTTP-Server starten, z. B. `npx serve .`.
+Die Seite benötigt einen lokalen HTTP-Server, weil Three.js als ES-Modul und die Medien nicht zuverlässig über `file://` funktionieren. Im Projektordner z. B. `npx serve .` starten und die ausgegebene lokale Adresse öffnen. Three.js 0.186.1 liegt samt Core-Modul lokal in `vendor/`; für den Laufzeitcode wird kein CDN benötigt.
+
+## Inhalte und Medien
+
+- `index.html` enthält die gesamte Scroll-Story. Die alten Seiten bleiben als kurze Weiterleitungen auf passende Abschnitte erhalten.
+- `WORLD_BIBLE.md` hält Szenen, Kamera, Stil, Interaktion, Medien und Prüfpunkte fest.
+- Die Website enthält keine erfundenen Erscheinungstermine, Streaming-Links, Tracklisten oder biografischen Aussagen.
+- `assets/audio/low-low-30s.wav` ist der 30-Sekunden-Ausschnitt ab 00:43 aus der Projektdatei `Low, Low.wav`. Der Player lädt ihn erst nach Aktivierung.
+- Die Nachtfahrt im Cockpit und der Stadtraum sind stilisierte 3D-Geometrie. `assets/nachtfahrt.png` ist ein generiertes Stimmungsbild und wird nur bei fehlendem WebGL gezeigt.
+- Die Originalbilder und die vollständige WAV-Datei außerhalb dieses Ordners bleiben unangetastet.
 
 ## GitHub Pages
 
-Dieses Repository ist für GitHub Pages direkt aus dem Stammverzeichnis vorbereitet. Nach dem Push auf den gewünschten Hauptbranch in GitHub unter **Settings → Pages → Build and deployment** die Option **Deploy from a branch** wählen, den Branch und **/(root)** auswählen und speichern. Die Datei `.nojekyll` verhindert eine Jekyll-Verarbeitung.
+Dieses Repository ist für GitHub Pages direkt aus dem Stammverzeichnis vorbereitet. Nach Freigabe des Entwurfs die letzten lokalen Änderungen auf `master` übernehmen und pushen. Dann in GitHub unter **Settings → Pages → Build and deployment** die Option **Deploy from a branch**, den Branch **master** und **/(root)** wählen und speichern. Die Datei `.nojekyll` verhindert eine Jekyll-Verarbeitung.
 
-Vor der Veröffentlichung die Seite im Browser prüfen. Nach Bekanntgabe des Termins oder der offiziellen Streaming-URLs die Hinweise auf allen betroffenen Seiten aktualisieren; bis dahin verweist nur der bestätigte Instagram-Account nach außen. Die drei neuen Szenenmotive in `assets/` wurden für diese Website aus dem vorhandenen Porträt als Bildreferenz generiert und zeigen keine dokumentierten Ereignisse.
+Vor einer Veröffentlichung die Seite im Browser prüfen und auf mindestens einem echten Smartphone testen. Erst nach Freigabe veröffentlichen. Bis offizielle Hörlinks vorliegen, verweist der einzige externe Handlungsaufruf auf das bestätigte Instagram-Profil.
